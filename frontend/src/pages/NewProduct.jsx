@@ -1,0 +1,589 @@
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Plus, Trash2, PlayCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import PageHeader from "@/components/ui/page-header";
+import QRCodeStyling from "qr-code-styling";
+
+const getYoutubeEmbedUrl = (url) => {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace("www.", "");
+
+    if (hostname === "youtu.be") {
+      const id = parsed.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+
+    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
+      const v = parsed.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+
+      const parts = parsed.pathname.split("/");
+      const embedIndex = parts.indexOf("embed");
+      if (embedIndex !== -1 && parts[embedIndex + 1]) {
+        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const newProductSchema = z
+  .object({
+    title: z.string().min(1, "Ürün başlığı zorunludur."),
+    description: z
+      .string()
+      .min(10, "Ürün açıklaması en az 10 karakter olmalıdır."),
+    youtube: z.string().optional().or(z.literal("")),
+    is_active: z.enum(["1", "0"], {
+      required_error: "Ürün durumu zorunludur.",
+    }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.youtube && !getYoutubeEmbedUrl(data.youtube)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["youtube"],
+        message: "Geçerli bir YouTube linki girin.",
+      });
+    }
+  });
+
+const NewProduct = () => {
+  const [altImages, setAltImages] = useState([{ id: 1 }, { id: 2 }]);
+  const [hasCoverFile, setHasCoverFile] = useState(false);
+  const [hasAltFile, setHasAltFile] = useState(false);
+  const [coverError, setCoverError] = useState("");
+  const [altError, setAltError] = useState("");
+  const [coverName, setCoverName] = useState("");
+  const [altNames, setAltNames] = useState({});
+  const [pdfName, setPdfName] = useState("");
+  const [coverFile, setCoverFile] = useState(null);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [altFiles, setAltFiles] = useState({});
+  const [fileInputsKey, setFileInputsKey] = useState(0);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    trigger,
+    getValues,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(newProductSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      youtube: "",
+      is_active: "1",
+    },
+  });
+
+  const youtubeUrl = watch("youtube");
+
+  const handleAddAltImage = () => {
+    setAltImages((prev) => [...prev, { id: prev.length + 1 }]);
+  };
+
+  const handleRemoveAltImage = (id) => {
+    if (altImages.length <= 1) {
+      toast("En az bir alt fotoğraf gereklidir.", {
+        description:
+          "Lütfen en az bir alt görsel bırakarak düzenlemeye devam edin.",
+      });
+      return;
+    }
+
+    setAltImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleCoverChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      setHasCoverFile(true);
+      setCoverError("");
+      setCoverName(file.name);
+      setCoverFile(file);
+    } else {
+      setHasCoverFile(false);
+      setCoverName("");
+      setCoverFile(null);
+    }
+  };
+
+  const handleAltFileChange = (e, id) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    setHasAltFile(true);
+    setAltError("");
+    setAltNames((prev) => ({
+      ...prev,
+      [id]: file.name,
+    }));
+    setAltFiles((prev) => ({
+      ...prev,
+      [id]: file,
+    }));
+  };
+
+  const handleReset = () => {
+    reset({
+      title: "",
+      description: "",
+      youtube: "",
+      is_active: "1",
+    });
+    setAltImages([{ id: 1 }, { id: 2 }]);
+    setHasCoverFile(false);
+    setHasAltFile(false);
+    setCoverError("");
+    setAltError("");
+    setCoverName("");
+    setAltNames({});
+    setPdfName("");
+    setCoverFile(null);
+    setPdfFile(null);
+    setAltFiles({});
+    setFileInputsKey((prev) => prev + 1);
+  };
+
+  const onSubmit = async (data) => {
+    try {
+      const qrToken =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? `${crypto.randomUUID()}-${Math.random().toString(36).slice(2)}`
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+
+      const qrData = `${window.location.origin}/p/${qrToken}`;
+
+      let qrBlob = null;
+      try {
+        const qrCode = new QRCodeStyling({
+          width: 600,
+          height: 600,
+          type: "png",
+          data: qrData,
+          dotsOptions: {
+            color: "#000000",
+            type: "rounded",
+          },
+          backgroundOptions: {
+            color: "#ffffff",
+          },
+        });
+
+        qrBlob = await qrCode.getRawData("png");
+      } catch (qrError) {
+        console.error("QR kodu oluşturulurken hata oluştu", qrError);
+      }
+
+      const formData = new FormData();
+      formData.append("title", data.title);
+      formData.append("description", data.description);
+      formData.append("is_active", data.is_active === "1" ? "1" : "0");
+      formData.append("qr_token", qrToken);
+      if (data.youtube) {
+        formData.append("youtube_url", data.youtube);
+      }
+      if (coverFile) {
+        formData.append("cover", coverFile);
+      }
+      Object.values(altFiles).forEach((file) => {
+        if (file) {
+          formData.append("alt_images[]", file);
+        }
+      });
+      if (pdfFile) {
+        formData.append("pdf", pdfFile);
+      }
+
+      if (qrBlob) {
+        formData.append("qr", qrBlob, `qr-${qrToken}.png`);
+      }
+
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+      const response = await fetch(`${API_BASE_URL}/api/products`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const message =
+          result?.message || "Ürün kaydedilirken bir hata oluştu.";
+        toast(message, {
+          description:
+            typeof result?.errors === "object"
+              ? Object.values(result.errors).flat().join(" ")
+              : undefined,
+        });
+        return;
+      }
+
+      toast("Ürün kaydedildi.", {
+        description: "Ürün başarıyla veritabanına kaydedildi.",
+      });
+      handleReset();
+    } catch (error) {
+      console.error("Ürün kaydedilirken hata oluştu", error);
+      toast("Bir hata oluştu.", {
+        description: "Lütfen daha sonra tekrar deneyin.",
+      });
+    }
+  };
+
+  const handleValidateAndSubmit = async () => {
+    const fieldsValid = await trigger();
+    let hasError = !fieldsValid;
+
+    if (!hasCoverFile) {
+      setCoverError("Kapak fotoğrafı zorunludur.");
+      hasError = true;
+    } else {
+      setCoverError("");
+    }
+
+    if (!hasAltFile) {
+      setAltError("En az bir alt fotoğraf zorunludur.");
+      hasError = true;
+    } else {
+      setAltError("");
+    }
+
+    if (hasError) return;
+
+    const data = getValues();
+    onSubmit(data);
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Yeni Ürün"
+        description={"Bu sayfada yeni bir ürün oluşturabilirsiniz."}
+        primaryText="Ürünü oluştur"
+        secondaryText="Temizle"
+        onPrimaryClick={handleValidateAndSubmit}
+        onSecondaryClick={handleReset}
+      />
+
+      <form className="w-full space-y-6 pt-3 md:w-1/2">
+        <div className="space-y-1.5">
+          <Label htmlFor="title">
+            Ürün başlığı <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="title"
+            placeholder="Örn. Akcan Grup Özel QR Menü"
+            className="bg-card"
+            {...register("title")}
+          />
+          {errors.title && (
+            <p className="text-xs text-destructive">{errors.title.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="description">
+            Ürün açıklaması <span className="text-destructive">*</span>
+          </Label>
+          <Textarea
+            id="description"
+            placeholder="Ürünün detaylarını, öne çıkan özelliklerini ve kullanıldığı alanları açıklayın."
+            rows={4}
+            className="bg-card"
+            {...register("description")}
+          />
+          {errors.description && (
+            <p className="text-xs text-destructive">
+              {errors.description.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-1">
+            <Label htmlFor="cover-image">
+              Kapak fotoğrafı <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative flex h-32 cursor-pointer items-center justify-center rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 text-xs text-muted-foreground">
+              {coverName ? (
+                <div className="max-w-full px-4 text-center text-xs text-foreground">
+                  <p className="font-medium">Seçilen dosya</p>
+                  <p className="mt-1 truncate text-[11px]" title={coverName}>
+                    {coverName}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 5MB.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1 text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    Kapak görselini sürükleyip bırakın
+                  </p>
+                  <p>
+                    veya{" "}
+                    <span className="font-medium text-primary">dosya seç</span>
+                  </p>
+                  <p className="text-[11px]">
+                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 5MB.
+                  </p>
+                </div>
+              )}
+              <Input
+                key={fileInputsKey}
+                id="cover-image"
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={handleCoverChange}
+              />
+            </div>
+            {coverError && (
+              <p className="text-xs text-destructive">{coverError}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>
+                Alt fotoğraflar <span className="text-destructive">*</span>
+              </Label>
+
+              <Plus className="h-4 w-4" onClick={handleAddAltImage} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <AnimatePresence initial={false}>
+                {altImages.map((image) => (
+                  <motion.div
+                    key={image.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -8 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="relative flex h-24 cursor-pointer items-center justify-center rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 text-xs text-muted-foreground"
+                  >
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="absolute right-1.5 top-1.5 z-10 h-7 w-7 rounded-full bg-background/80"
+                      onClick={() => handleRemoveAltImage(image.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    {altNames[image.id] ? (
+                      <div className="max-w-full px-3 text-center text-[11px] text-foreground">
+                        <p className="font-medium">Seçilen dosya</p>
+                        <p className="mt-1 truncate" title={altNames[image.id]}>
+                          {altNames[image.id]}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 text-center px-4">
+                        <p className="text-xs font-medium text-foreground">
+                          Alt görseli sürükleyip bırakın
+                        </p>
+                        <p>
+                          veya{" "}
+                          <span className="font-medium text-primary">
+                            dosya seç
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    <Input
+                      key={`${fileInputsKey}-${image.id}`}
+                      type="file"
+                      accept="image/*"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      onChange={(e) => handleAltFileChange(e, image.id)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            {altError && <p className="text-xs text-destructive">{altError}</p>}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="pdf">PDF dokümanı</Label>
+            <div className="relative flex h-24 cursor-pointer items-center justify-center rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 text-xs text-muted-foreground">
+              {pdfName ? (
+                <div className="max-w-full px-4 text-center text-xs text-foreground">
+                  <p className="font-medium">Seçilen dosya</p>
+                  <p className="mt-1 truncate text-[11px]" title={pdfName}>
+                    {pdfName}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Sadece PDF dosyaları, en fazla 10MB.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1 text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    PDF dokümanı sürükleyip bırakın
+                  </p>
+                  <p>
+                    veya{" "}
+                    <span className="font-medium text-primary">dosya seç</span>
+                  </p>
+                  <p className="text-[11px]">
+                    Sadece PDF dosyaları, en fazla 10MB.
+                  </p>
+                </div>
+              )}
+              <Input
+                key={fileInputsKey}
+                id="pdf"
+                type="file"
+                accept="application/pdf"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={(e) => {
+                  const file = e.target.files && e.target.files[0];
+                  setPdfName(file ? file.name : "");
+                  setPdfFile(file || null);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="youtube">YouTube linki</Label>
+            <div className="relative">
+              <Input
+                id="youtube"
+                type="url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                {...register("youtube")}
+                className={`${getYoutubeEmbedUrl(youtubeUrl) ? "pr-10" : ""} bg-card`}
+              />
+              {getYoutubeEmbedUrl(youtubeUrl) && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-primary focus-visible:outline-none"
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      <span className="sr-only">Videoyu önizle</span>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                      <DialogTitle>YouTube önizleme</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-2 aspect-video w-full overflow-hidden rounded-md bg-muted">
+                      <iframe
+                        src={getYoutubeEmbedUrl(youtubeUrl) ?? ""}
+                        title="YouTube video preview"
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ürünü tanıtan video veya kullanım rehberi ekleyebilirsiniz.
+            </p>
+            {errors.youtube && (
+              <p className="text-xs text-destructive">
+                {errors.youtube.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="status">
+              Ürün durumu <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              defaultValue="1"
+              onValueChange={(value) => {
+                setValue("is_active", value, { shouldValidate: true });
+              }}
+            >
+              <SelectTrigger id="status" className="bg-card">
+                <SelectValue placeholder="Durum seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Aktif</SelectItem>
+                <SelectItem value="0">Pasif</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.is_active && (
+              <p className="text-xs text-destructive">
+                {errors.is_active.message}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mx-auto flex max-w-5xl justify-end gap-2">
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="shadow-none"
+            onClick={handleReset}
+          >
+            Temizle
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            className="shadow-md"
+            onClick={handleValidateAndSubmit}
+          >
+            Ürünü oluştur
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default NewProduct;
