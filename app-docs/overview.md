@@ -19,5 +19,8 @@ Bu klasör, projede birlikte yaptığımız UI/UX ve front-end geliştirmelerini
 - `modals-and-scrollbar.md`  
   YouTube önizleme modali, dialog animasyonları ve global scrollbar tasarımı.
 
+- `qr-flow-and-analytics.md`  
+  QR üretimi ve `qr_token` mimarisi, ürün detay sayfası, ziyaret kayıtları (`visits` tablosu) ve dashboard/ürünler sekmesindeki istatistikler.
+
 Her dosya, hem teknik olarak hangi bileşenlerin/araçların kullanıldığını, hem de tasarım kararlarının arkasındaki mantığı anlatır.
 
