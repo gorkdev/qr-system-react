@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { PlayCircle, FileText } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { PlayCircle, FileText, ZoomIn } from 'lucide-react'
+import PdfPages from '@/components/PdfPages'
 import {
   Dialog,
   DialogContent,
@@ -106,8 +106,9 @@ const ProductPublic = () => {
 
   const getPublicUrl = (path) => {
     if (!path) return null
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-    return `${API_BASE_URL}/storage/${path}`
+    // PDF ve görseller için relative URL kullanıyoruz; Vite dev server
+    // /storage isteklerini backend'e proxy'liyor.
+    return `/storage/${path}`
   }
 
   if (isLoading) {
@@ -141,8 +142,8 @@ const ProductPublic = () => {
   const youtubeEmbed = getYoutubeEmbedUrl(product.youtube_url)
 
   return (
-    <div className='min-h-screen bg-background px-4 py-6 text-foreground'>
-      <div className='mx-auto flex w-full max-w-xl flex-col gap-5'>
+    <div className='h-dvh overflow-y-auto bg-background px-4 py-6 text-foreground'>
+      <div className='mx-auto flex w-full max-w-3xl flex-col gap-5'>
         {youtubeEmbed && (
           <div className='space-y-2'>
             <div className='flex items-center gap-2 text-sm font-medium'>
@@ -173,13 +174,33 @@ const ProductPublic = () => {
               <DialogTrigger asChild>
                 <button
                   type='button'
-                  className='w-full overflow-hidden border-b bg-black/5'
+                  className='group relative w-full overflow-hidden border-b bg-black/60'
                 >
-                  <img
-                    src={coverUrl}
-                    alt={product.title}
-                    className='aspect-video w-full object-cover'
-                  />
+                  {/* Arka plan katmanı - tüm alanı kaplar, düşük opacity */}
+                  <div className='pointer-events-none absolute inset-0 opacity-35'>
+                    <img
+                      src={coverUrl}
+                      alt={product.title}
+                      className='h-full w-full object-cover blur-sm'
+                    />
+                  </div>
+
+                  {/* Ön plan katmanı - tam görsel, kırpılmadan */}
+                  <div className='relative z-10 flex items-center justify-center px-4 py-4'>
+                    <img
+                      src={coverUrl}
+                      alt={product.title}
+                      className='max-h-[260px] w-auto rounded-xl border border-white/20 bg-black/40 object-contain shadow-md'
+                    />
+                  </div>
+
+                  {/* Hover'da büyüteç overlay */}
+                  <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100'>
+                    <div className='flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white'>
+                      <ZoomIn className='h-3.5 w-3.5' />
+                      <span>Büyütmek için tıklayın</span>
+                    </div>
+                  </div>
                 </button>
               </DialogTrigger>
               <DialogContent className='sm:max-w-xl'>
@@ -190,7 +211,7 @@ const ProductPublic = () => {
                   <img
                     src={coverUrl}
                     alt={product.title}
-                    className='max-h-[480px] max-w-full rounded-md border bg-muted'
+                    className='max-h-[480px] max-w-full rounded-md'
                   />
                 </div>
               </DialogContent>
@@ -221,13 +242,18 @@ const ProductPublic = () => {
                         <DialogTrigger asChild>
                           <button
                             type='button'
-                            className='overflow-hidden rounded-lg border bg-muted'
+                            className='group relative overflow-hidden rounded-lg'
                           >
                             <img
                               src={url}
                               alt={`${product.title} alt görsel ${index + 1}`}
                               className='aspect-square w-full object-cover'
                             />
+                            <div className='pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100'>
+                              <div className='rounded-full bg-black/70 p-1.5 text-white'>
+                                <ZoomIn className='h-3.5 w-3.5' />
+                              </div>
+                            </div>
                           </button>
                         </DialogTrigger>
                         <DialogContent className='sm:max-w-xl'>
@@ -238,7 +264,7 @@ const ProductPublic = () => {
                             <img
                               src={url}
                               alt={`${product.title} alt görsel ${index + 1}`}
-                              className='max-h-[480px] max-w-full rounded-md border bg-muted'
+                              className='max-h-[480px] max-w-full rounded-md'
                             />
                           </div>
                         </DialogContent>
@@ -255,11 +281,9 @@ const ProductPublic = () => {
                   <FileText className='h-4 w-4 text-primary' />
                   <span>Doküman</span>
                 </div>
-                <Button asChild variant='outline' size='sm' className='gap-2'>
-                  <a href={pdfUrl} target='_blank' rel='noreferrer'>
-                    PDF&apos;i aç
-                  </a>
-                </Button>
+                <div className='flex justify-center'>
+                  <PdfPages pdfUrl={pdfUrl} />
+                </div>
               </div>
             )}
           </div>

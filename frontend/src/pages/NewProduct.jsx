@@ -26,6 +26,9 @@ import {
 import PageHeader from "@/components/ui/page-header";
 import QRCodeStyling from "qr-code-styling";
 
+const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
+const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB
+
 const getYoutubeEmbedUrl = (url) => {
   if (!url) return null;
 
@@ -79,9 +82,7 @@ const newProductSchema = z
 const NewProduct = () => {
   const [altImages, setAltImages] = useState([{ id: 1 }, { id: 2 }]);
   const [hasCoverFile, setHasCoverFile] = useState(false);
-  const [hasAltFile, setHasAltFile] = useState(false);
   const [coverError, setCoverError] = useState("");
-  const [altError, setAltError] = useState("");
   const [coverName, setCoverName] = useState("");
   const [altNames, setAltNames] = useState({});
   const [pdfName, setPdfName] = useState("");
@@ -89,6 +90,7 @@ const NewProduct = () => {
   const [pdfFile, setPdfFile] = useState(null);
   const [altFiles, setAltFiles] = useState({});
   const [fileInputsKey, setFileInputsKey] = useState(0);
+  const [imageBytesTotal, setImageBytesTotal] = useState(0);
 
   const {
     register,
@@ -116,25 +118,54 @@ const NewProduct = () => {
   };
 
   const handleRemoveAltImage = (id) => {
-    if (altImages.length <= 1) {
-      toast("En az bir alt fotoğraf gereklidir.", {
-        description:
-          "Lütfen en az bir alt görsel bırakarak düzenlemeye devam edin.",
-      });
-      return;
+    const fileToRemove = altFiles[id];
+
+    if (fileToRemove?.size) {
+      setImageBytesTotal((prev) => Math.max(0, prev - fileToRemove.size));
     }
 
     setAltImages((prev) => prev.filter((img) => img.id !== id));
+    setAltNames((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setAltFiles((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const handleCoverChange = (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
+      const prevCoverSize = coverFile?.size || 0;
+      const newTotal = imageBytesTotal - prevCoverSize + file.size;
+
+      if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
+        setHasCoverFile(!!coverFile);
+        setCoverName(coverFile?.name || "");
+        setCoverFile(coverFile || null);
+        setCoverError("Toplam görsel boyutu en fazla 15MB olabilir.");
+        if (e?.target) e.target.value = "";
+        toast("Toplam görsel boyutu çok büyük.", {
+          description:
+            "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+        });
+        return;
+      }
+
+      setImageBytesTotal(newTotal);
       setHasCoverFile(true);
       setCoverError("");
       setCoverName(file.name);
       setCoverFile(file);
     } else {
+      const prevCoverSize = coverFile?.size || 0;
+      if (prevCoverSize) {
+        setImageBytesTotal((prev) => Math.max(0, prev - prevCoverSize));
+      }
       setHasCoverFile(false);
       setCoverName("");
       setCoverFile(null);
@@ -144,9 +175,19 @@ const NewProduct = () => {
   const handleAltFileChange = (e, id) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    const prevAltSize = altFiles[id]?.size || 0;
+    const newTotal = imageBytesTotal - prevAltSize + file.size;
 
-    setHasAltFile(true);
-    setAltError("");
+    if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
+      if (e?.target) e.target.value = "";
+      toast("Toplam görsel boyutu çok büyük.", {
+        description:
+          "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+      });
+      return;
+    }
+
+    setImageBytesTotal(newTotal);
     setAltNames((prev) => ({
       ...prev,
       [id]: file.name,
@@ -155,6 +196,28 @@ const NewProduct = () => {
       ...prev,
       [id]: file,
     }));
+  };
+
+  const handlePdfChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) {
+      setPdfName("");
+      setPdfFile(null);
+      return;
+    }
+
+    if (file.size > MAX_PDF_BYTES) {
+      setPdfName("");
+      setPdfFile(null);
+      if (e?.target) e.target.value = "";
+      toast("Dosya boyutu çok büyük.", {
+        description: "PDF için maksimum 10MB seçebilirsiniz.",
+      });
+      return;
+    }
+
+    setPdfName(file.name);
+    setPdfFile(file);
   };
 
   const handleReset = () => {
@@ -166,9 +229,7 @@ const NewProduct = () => {
     });
     setAltImages([{ id: 1 }, { id: 2 }]);
     setHasCoverFile(false);
-    setHasAltFile(false);
     setCoverError("");
-    setAltError("");
     setCoverName("");
     setAltNames({});
     setPdfName("");
@@ -176,6 +237,7 @@ const NewProduct = () => {
     setPdfFile(null);
     setAltFiles({});
     setFileInputsKey((prev) => prev + 1);
+    setImageBytesTotal(0);
   };
 
   const onSubmit = async (data) => {
@@ -279,13 +341,6 @@ const NewProduct = () => {
       setCoverError("");
     }
 
-    if (!hasAltFile) {
-      setAltError("En az bir alt fotoğraf zorunludur.");
-      hasError = true;
-    } else {
-      setAltError("");
-    }
-
     if (hasError) return;
 
     const data = getValues();
@@ -383,9 +438,7 @@ const NewProduct = () => {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label>
-                Alt fotoğraflar <span className="text-destructive">*</span>
-              </Label>
+              <Label>Alt fotoğraflar</Label>
 
               <Plus className="h-4 w-4" onClick={handleAddAltImage} />
             </div>
@@ -441,7 +494,6 @@ const NewProduct = () => {
                 ))}
               </AnimatePresence>
             </div>
-            {altError && <p className="text-xs text-destructive">{altError}</p>}
           </div>
         </div>
 
@@ -479,11 +531,7 @@ const NewProduct = () => {
                 type="file"
                 accept="application/pdf"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                onChange={(e) => {
-                  const file = e.target.files && e.target.files[0];
-                  setPdfName(file ? file.name : "");
-                  setPdfFile(file || null);
-                }}
+                onChange={handlePdfChange}
               />
             </div>
           </div>
