@@ -11,13 +11,24 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ChevronDown, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
+
+const PAGE_SIZE = 10
+
+const normalizeText = (value) =>
+  (value ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 const Visits = () => {
   const [visits, setVisits] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     const fetchVisits = async () => {
@@ -54,7 +65,7 @@ const Visits = () => {
       const title = visit.product?.title ?? ''
       const matchesSearch =
         !search.trim() ||
-        title.toLowerCase().includes(search.toLowerCase()) ||
+        normalizeText(title).includes(normalizeText(search)) ||
         (visit.ip_address ?? '').includes(search)
 
       const matchesDevice =
@@ -65,6 +76,17 @@ const Visits = () => {
       return matchesSearch && matchesDevice
     })
   }, [visits, search, deviceFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredVisits.length / PAGE_SIZE))
+
+  const currentPageVisits = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredVisits.slice(start, start + PAGE_SIZE)
+  }, [filteredVisits, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, deviceFilter])
 
   const formatDateTime = (value) => {
     if (!value) return '-'
@@ -131,8 +153,11 @@ const Visits = () => {
               />
             </div>
             <Select value={deviceFilter} onValueChange={setDeviceFilter}>
-              <SelectTrigger className='h-8 w-[140px] text-xs bg-card'>
-                <SelectValue placeholder='Cihaz türü' />
+              <SelectTrigger className='h-8 w-[150px] text-xs bg-card pl-3 pr-2'>
+                <div className='flex w-full items-center justify-between gap-1'>
+                  <SelectValue placeholder='Cihaz türü' />
+                  <ChevronDown className='h-3.5 w-3.5 text-muted-foreground' />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Tümü</SelectItem>
@@ -159,18 +184,21 @@ const Visits = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className='py-6 text-center text-sm'>
+                  <TableCell colSpan={6} className='py-6 text-center text-sm'>
                     Ziyaretler yükleniyor...
                   </TableCell>
                 </TableRow>
               ) : filteredVisits.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className='py-6 text-center text-sm'>
-                    Henüz kayıtlı ziyaret bulunmuyor.
+                  <TableCell colSpan={6} className='py-12'>
+                    <div className='flex flex-col items-center justify-center gap-2 text-muted-foreground'>
+                      <SearchX className='h-5 w-5' />
+                      <p className='text-sm'>Arama kriterlerinize uygun ziyaret bulunamadı.</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredVisits.map((visit) => (
+                currentPageVisits.map((visit) => (
                   <TableRow key={visit.id}>
                     <TableCell className='max-w-xs'>
                       <div className='flex flex-col gap-0.5'>
@@ -205,6 +233,32 @@ const Visits = () => {
             </TableBody>
           </Table>
         </div>
+
+        {!isLoading && filteredVisits.length > PAGE_SIZE && (
+          <div className='mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground'>
+            <button
+              type='button'
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className='inline-flex h-7 items-center rounded-md border bg-background px-2 disabled:cursor-not-allowed disabled:opacity-50'
+            >
+              Önceki
+            </button>
+            <span>
+              Sayfa {currentPage} / {totalPages}
+            </span>
+            <button
+              type='button'
+              disabled={currentPage === totalPages}
+              onClick={() =>
+                setCurrentPage((p) => Math.min(totalPages, p + 1))
+              }
+              className='inline-flex h-7 items-center rounded-md border bg-background px-2 disabled:cursor-not-allowed disabled:opacity-50'
+            >
+              Sonraki
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -19,15 +19,20 @@ const PdfPages = ({ pdfUrl }) => {
       try {
         setLoading(true)
         setError(null)
+        setCanvases([])
         const res = await fetch(pdfUrl)
         if (!res.ok) throw new Error('PDF yüklenemedi')
         const arrayBuffer = await res.arrayBuffer()
 
         const pdf = await getDocument({ data: arrayBuffer }).promise
         const numPages = pdf.numPages
+        if (!numPages || numPages <= 0) {
+          throw new Error('Gösterilecek PDF sayfası bulunamadı')
+        }
 
         const dpr = window.devicePixelRatio || 1
-        const maxWidth = 576
+        const containerWidth = containerRef.current?.clientWidth || 600
+        const maxWidth = containerWidth
 
         const canvasesData = []
         for (let i = 1; i <= numPages; i++) {

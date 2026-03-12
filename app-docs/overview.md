@@ -22,5 +22,8 @@ Bu klasör, projede birlikte yaptığımız UI/UX ve front-end geliştirmelerini
 - `qr-flow-and-analytics.md`  
   QR üretimi ve `qr_token` mimarisi, ürün detay sayfası, ziyaret kayıtları (`visits` tablosu) ve dashboard/ürünler sekmesindeki istatistikler.
 
+- `product-public-and-admin-tweaks.md`  
+  Public ürün detay sayfası açılış overlay’i, dinamik başlık, admin ürünler ve ziyaret geçmişi tablolarında arama/pagination/bulunamadı UX iyileştirmeleri.
+
 Her dosya, hem teknik olarak hangi bileşenlerin/araçların kullanıldığını, hem de tasarım kararlarının arkasındaki mantığı anlatır.
 

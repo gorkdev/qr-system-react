@@ -5,15 +5,18 @@ import Dashboard from '@/pages/Dashboard'
 import Stats from '@/pages/Stats'
 import Products from '@/pages/Products'
 import NewProduct from '@/pages/NewProduct'
+import EditProduct from '@/pages/EditProduct'
 import Settings from '@/pages/Settings'
 import ProductPublic from '@/pages/ProductPublic'
 import Visits from '@/pages/Visits'
+import NotFound from '@/pages/NotFound'
 
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path='/p/:token' element={<ProductPublic />} />
+        <Route path='/qr/:token' element={<ProductPublic />} />
         <Route
           path='/*'
           element={
@@ -24,8 +27,10 @@ const App = () => {
                 <Route path='/istatistikler' element={<Stats />} />
                 <Route path='/urunler' element={<Products />} />
                 <Route path='/yeni-urun' element={<NewProduct />} />
-                 <Route path='/ziyaret-gecmisi' element={<Visits />} />
+                <Route path='/urun-duzenle/:slugAndId' element={<EditProduct />} />
+                <Route path='/ziyaret-gecmisi' element={<Visits />} />
                 <Route path='/ayarlar' element={<Settings />} />
+                <Route path='*' element={<NotFound />} />
               </Routes>
             </AdminShell>
           }

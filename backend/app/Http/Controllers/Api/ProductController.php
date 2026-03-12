@@ -113,7 +113,87 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'youtube_url' => ['nullable', 'string', 'max:255'],
+            'is_active'   => ['required', 'boolean'],
+            'cover'       => ['nullable', 'file', 'image', 'max:5120'],
+            'pdf'         => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'alt_images'  => ['nullable', 'array'],
+            'alt_images.*'=> ['file', 'image', 'max:5120'],
+        ]);
+
+        $manager = new ImageManager(new Driver());
+
+        // Klasör: ürün oluşturulurken kullanılan klasör, mevcut cover path'inden türetilir
+        $folder = $product->cover_image_path
+            ? dirname($product->cover_image_path)
+            : 'products/' . Str::slug($validated['title']) . '-' . Str::random(8);
+
+        $coverPath = $product->cover_image_path;
+        if ($request->hasFile('cover')) {
+            if ($coverPath && Storage::disk('public')->exists($coverPath)) {
+                Storage::disk('public')->delete($coverPath);
+            }
+
+            $coverImage = $manager->read($request->file('cover')->getRealPath())
+                ->scaleDown(1600)
+                ->encodeByExtension('jpg', quality: 80);
+
+            $coverPath = $folder . '/cover.jpg';
+            Storage::disk('public')->put($coverPath, (string) $coverImage);
+        }
+
+        $altImagePaths = $product->alt_image_paths ?? [];
+        if ($request->hasFile('alt_images')) {
+            // Eski alt görselleri sil
+            foreach ($altImagePaths as $oldPath) {
+                if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+
+            $altImagePaths = [];
+            foreach ($request->file('alt_images') as $index => $file) {
+                $image = $manager->read($file->getRealPath())
+                    ->scaleDown(1600)
+                    ->encodeByExtension('jpg', quality: 80);
+
+                $path = $folder . '/alt-' . ($index + 1) . '.jpg';
+                Storage::disk('public')->put($path, (string) $image);
+                $altImagePaths[] = $path;
+            }
+        }
+
+        $pdfPath = $product->pdf_path;
+        if ($request->hasFile('pdf')) {
+            if ($pdfPath && Storage::disk('public')->exists($pdfPath)) {
+                Storage::disk('public')->delete($pdfPath);
+            }
+
+            $pdfFile = $request->file('pdf');
+            $pdfFileName = 'document-' . Str::random(8) . '.' . $pdfFile->getClientOriginalExtension();
+            $pdfPath = $folder . '/' . $pdfFileName;
+            Storage::disk('public')->putFileAs($folder, $pdfFile, $pdfFileName);
+        }
+
+        $product->update([
+            'title'            => $validated['title'],
+            'description'      => $validated['description'],
+            'youtube_url'      => $validated['youtube_url'] ?? null,
+            'cover_image_path' => $coverPath,
+            'pdf_path'         => $pdfPath,
+            'alt_image_paths'  => $altImagePaths,
+            'is_active'        => $validated['is_active'],
+        ]);
+
+        return response()->json([
+            'message' => 'Product updated',
+            'data'    => $product->fresh(),
+        ]);
     }
 
     /**
