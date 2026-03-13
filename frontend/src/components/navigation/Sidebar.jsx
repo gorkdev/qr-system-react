@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   LayoutDashboard,
@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { label: "Genel", to: "/genel", icon: LayoutDashboard },
@@ -21,6 +22,14 @@ const navItems = [
 ];
 
 export const Sidebar = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/giris-yap");
+  };
+
   return (
     <aside className="hidden h-full w-64 flex-col border-r bg-background/90 px-4 pb-4 pt-4 md:pt-6 md:flex lg:w-72">
       <div className="flex items-center px-2">
@@ -79,6 +88,7 @@ export const Sidebar = () => {
           size="sm"
           variant="destructive"
           className="h-7 px-2 text-[11px]"
+          onClick={handleLogout}
         >
           Çıkış yap
         </Button>

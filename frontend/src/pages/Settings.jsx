@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +13,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { apiFetch } from "@/lib/api";
 
 const Settings = () => {
   const [initialQrReadable, setInitialQrReadable] = useState(true);
   const [qrReadable, setQrReadable] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const hasChanges = useMemo(
     () => qrReadable !== initialQrReadable,
@@ -29,12 +42,10 @@ const Settings = () => {
     if (!hasChanges || isSaving) return;
     try {
       setIsSaving(true);
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-      const res = await fetch(`${API_BASE_URL}/api/site-settings`, {
+      const res = await apiFetch("/api/site-settings", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({ qr_enabled: qrReadable }),
       });
@@ -59,6 +70,61 @@ const Settings = () => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (isChangingPassword) return;
+
+    if (!currentPassword.trim()) {
+      toast("Mevcut şifrenizi girin.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast("Yeni şifre en az 6 karakter olmalıdır.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast("Yeni şifreler eşleşmiyor.");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const res = await apiFetch("/api/change-password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+          new_password_confirmation: confirmPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast("Şifre değiştirilemedi.", {
+          description: data?.message || "Lütfen bilgilerinizi kontrol edin.",
+        });
+        return;
+      }
+
+      toast("Şifre değiştirildi.", {
+        description: "Yeni şifreniz başarıyla kaydedildi.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch {
+      toast("Bir hata oluştu.", {
+        description: "Lütfen daha sonra tekrar deneyin.",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const handleReset = () => {
     if (!hasChanges || isSaving) return;
     setQrReadable(initialQrReadable);
@@ -71,12 +137,7 @@ const Settings = () => {
     const fetchSettings = async () => {
       try {
         setIsLoading(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-        const res = await fetch(`${API_BASE_URL}/api/site-settings`, {
-          headers: {
-            Accept: "application/json",
-          },
-        });
+        const res = await apiFetch("/api/site-settings");
 
         if (!res.ok) {
           throw new Error("Site ayarları yüklenirken bir hata oluştu.");
@@ -178,6 +239,125 @@ const Settings = () => {
             onClick={handleSave}
           >
             {isSaving ? "Kaydediliyor..." : "Kaydet"}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <div className="space-y-1">
+            <CardTitle>Şifre değiştir</CardTitle>
+            <CardDescription>
+              Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin.
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <div className="w-full space-y-4 md:w-1/2">
+            <div className="space-y-1.5">
+              <Label htmlFor="current-password">Mevcut şifre</Label>
+              <div className="relative">
+                <Input
+                  id="current-password"
+                  type={showCurrentPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="pr-10 bg-card"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="new-password">Yeni şifre</Label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10 bg-card"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">En az 6 karakter olmalıdır.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-password">Yeni şifre (tekrar)</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-10 bg-card"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isChangingPassword || (!currentPassword && !newPassword && !confirmPassword)}
+            onClick={() => {
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmPassword("");
+              setShowCurrentPassword(false);
+              setShowNewPassword(false);
+              setShowConfirmPassword(false);
+            }}
+          >
+            Temizle
+          </Button>
+          <Button
+            type="button"
+            disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+            onClick={handleChangePassword}
+          >
+            {isChangingPassword ? "Kaydediliyor..." : "Şifreyi değiştir"}
           </Button>
         </CardFooter>
       </Card>

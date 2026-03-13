@@ -165,6 +165,31 @@
   color: #fff;
 }
 
+/* Tiptap editor */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+  font-size: 0.875rem;
+}
+
+.tiptap {
+  h2 { font-size: 1.125rem; font-weight: 600; margin: 0.75em 0 0.25em; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  ul { list-style: disc; padding-left: 1.25rem; margin: 0.25em 0; }
+  ol { list-style: decimal; padding-left: 1.25rem; margin: 0.25em 0; }
+  li { margin: 0.15em 0; }
+  blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: 0.75rem;
+    color: var(--muted-foreground);
+    margin: 0.5em 0;
+  }
+}
+
 @layer components {
   .brand-reflection {
     position: relative;

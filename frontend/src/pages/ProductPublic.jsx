@@ -45,6 +45,7 @@ const ProductPublic = () => {
   const [product, setProduct] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [productInactive, setProductInactive] = useState(false)
   const [countdown, setCountdown] = useState(5)
   const [progress, setProgress] = useState(1)
   const [qrEnabled, setQrEnabled] = useState(true)
@@ -52,8 +53,8 @@ const ProductPublic = () => {
   const [closedLang, setClosedLang] = useState('tr')
 
   useEffect(() => {
-    if (!qrEnabled && !settingsLoading) {
-      document.title = 'Site şu anda kapalı | Ürün Detayı'
+    if ((!qrEnabled && !settingsLoading) || productInactive) {
+      document.title = 'Şu anda kullanıma kapalı | Ürün Detayı'
     } else if (product?.title) {
       document.title = `${product.title} | Ürün Detayı`
     } else if (error) {
@@ -61,7 +62,7 @@ const ProductPublic = () => {
     } else {
       document.title = 'Ürün yükleniyor... | Ürün Detayı'
     }
-  }, [product?.title, error, qrEnabled, settingsLoading])
+  }, [product?.title, error, qrEnabled, settingsLoading, productInactive])
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -83,6 +84,12 @@ const ProductPublic = () => {
         }
 
         const data = await response.json()
+
+        if (data?.inactive) {
+          setProductInactive(true)
+          return
+        }
+
         setProduct(data)
       } catch (err) {
         console.error('Ürün yüklenirken hata oluştu', err)
@@ -154,7 +161,7 @@ const ProductPublic = () => {
   // Ürün yüklendiğinde arkaplanda ziyaret kaydı oluştur
   useEffect(() => {
     const recordVisit = async () => {
-      if (!product?.id || !qrEnabled) return
+      if (!product?.id || !qrEnabled || productInactive) return
 
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -172,7 +179,7 @@ const ProductPublic = () => {
     }
 
     recordVisit()
-  }, [product?.id, qrEnabled])
+  }, [product?.id, qrEnabled, productInactive])
 
   const getPublicUrl = (path) => {
     if (!path) return null
@@ -193,60 +200,63 @@ const ProductPublic = () => {
       className={`relative h-dvh overflow-y-scroll bg-background px-4 py-6 text-foreground ${countdown > 0 ? 'pointer-events-none' : ''
         }`}
     >
+      {error ? (
+        <div className='flex h-full items-center justify-center'>
+          <div className='flex flex-col items-center gap-4 px-4 text-center'>
+            <h1 className='text-lg font-semibold'>Ürün Bulunamadı</h1>
+            <p className='max-w-md text-sm text-muted-foreground'>
+              Aradığınız ürünü bulamadık, silinmiş veya gösterimden kaldırılmış olabilir.
+            </p>
+          </div>
+        </div>
+      ) : (!qrEnabled && !settingsLoading) || productInactive ? (
+        <div className='flex h-full items-center justify-center'>
+          <div className='flex flex-col items-center gap-4 px-4 text-center'>
+            <div className='inline-flex items-center gap-2 rounded-full border bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground'>
+              <button
+                type='button'
+                onClick={() => setClosedLang('tr')}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'tr'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'opacity-70 hover:opacity-100'
+                  }`}
+              >
+                <span>TR</span>
+              </button>
+              <button
+                type='button'
+                onClick={() => setClosedLang('en')}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'en'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'opacity-70 hover:opacity-100'
+                  }`}
+              >
+                <span>EN</span>
+              </button>
+            </div>
+            {closedLang === 'tr' ? (
+              <>
+                <h1 className='text-lg font-semibold'>Ürün Bulunamadı</h1>
+                <p className='max-w-md text-sm text-muted-foreground'>
+                  Aradığınız ürünü bulamadık, silinmiş veya gösterimden kaldırılmış olabilir.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className='text-lg font-semibold'>Product Not Found</h1>
+                <p className='max-w-md text-sm text-muted-foreground'>
+                  The product you are looking for could not be found. It may have been removed or taken off display.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className='mx-auto flex w-full max-w-4xl flex-col gap-5'>
         <div className='overflow-hidden rounded-2xl border bg-card'>
-          {error ? (
-            <div className='px-4 py-10 text-center'>
-              <h1 className='text-lg font-semibold'>Ürün bulunamadı</h1>
-              <p className='mt-2 text-sm text-muted-foreground'>
-                Ürün pasif durumda olabilir veya bağlantı geçersiz.
-              </p>
-            </div>
-          ) : !product ? (
+          {!product ? (
             <div className='px-4 py-10 text-center text-sm text-muted-foreground'>
               Ürün bilgileri yükleniyor...
-            </div>
-          ) : !qrEnabled && !settingsLoading ? (
-            <div className='flex min-h-[260px] flex-col items-center justify-center gap-4 px-4 py-10 text-center'>
-              <div className='inline-flex items-center gap-2 rounded-full border bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground'>
-                <button
-                  type='button'
-                  onClick={() => setClosedLang('tr')}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'tr'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'opacity-70 hover:opacity-100'
-                    }`}
-                >
-                  <span>TR</span>
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setClosedLang('en')}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'en'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'opacity-70 hover:opacity-100'
-                    }`}
-                >
-                  <span>EN</span>
-                </button>
-              </div>
-              {closedLang === 'tr' ? (
-                <>
-                  <h1 className='text-lg font-semibold'>Şu anda hizmet dışı</h1>
-                  <p className='max-w-md text-sm text-muted-foreground'>
-                    QR kod üzerinden ürün detayları geçici olarak kullanıma
-                    kapatılmıştır. Lütfen daha sonra tekrar deneyin.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h1 className='text-lg font-semibold'>Currently unavailable</h1>
-                  <p className='max-w-md text-sm text-muted-foreground'>
-                    Product details via QR codes are temporarily disabled. Please
-                    try again later.
-                  </p>
-                </>
-              )}
             </div>
           ) : (
             <>
@@ -315,13 +325,14 @@ const ProductPublic = () => {
               )}
 
               <div className='space-y-5 px-4 py-5'>
-                <div className='space-y-1'>
-                  <h1 className='text-lg font-semibold leading-snug tracking-tight md:text-xl'>
+                <div className='space-y-3'>
+                  <h1 className='border-b pb-3 text-xl font-semibold leading-snug tracking-tight md:text-2xl'>
                     {product.title}
                   </h1>
-                  <p className='text-sm leading-relaxed text-foreground md:text-base'>
-                    {product.description}
-                  </p>
+                  <div
+                    className='prose prose-sm max-w-none text-foreground md:prose-base'
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
                 </div>
 
                 {altImages.length > 0 && (
@@ -343,7 +354,7 @@ const ProductPublic = () => {
                                 <img
                                   src={url}
                                   alt={`${product.title} alt görsel ${index + 1}`}
-                                  className='aspect-square w-full object-cover'
+                                  className='aspect-square w-full object-contain'
                                 />
                                 <div className='pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100'>
                                   <div className='rounded-full bg-black/70 p-1.5 text-white'>
@@ -398,6 +409,7 @@ const ProductPublic = () => {
           )}
         </div>
       </div>
+      )}
 
       {countdown > 0 && (
         <div className='pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-white transition-opacity'>

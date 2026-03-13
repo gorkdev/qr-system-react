@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChevronDown, Plus, Trash2, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import RichEditor from "@/components/ui/rich-editor";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import PageHeader from "@/components/ui/page-header";
 import QRCodeStyling from "qr-code-styling";
+import { apiFetch } from "@/lib/api";
 
 const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
 const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB
@@ -60,18 +61,22 @@ const getYoutubeEmbedUrl = (url) => {
 
 const containsEmoji = (value) => {
   if (!value) return false;
-  // Yaygın emoji aralıklarını ve bazı sembolleri yakalar
   const emojiRegex =
     /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
   return emojiRegex.test(value);
 };
 
+const stripHtml = (html) => {
+  if (!html) return "";
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
+
 const newProductSchema = z
   .object({
     title: z.string().min(1, "Ürün başlığı zorunludur."),
-    description: z
-      .string()
-      .min(10, "Ürün açıklaması en az 10 karakter olmalıdır."),
+    description: z.string(),
     youtube: z.string().optional().or(z.literal("")),
     is_active: z.enum(["1", "0"], {
       required_error: "Ürün durumu zorunludur.",
@@ -86,7 +91,16 @@ const newProductSchema = z
       });
     }
 
-    if (containsEmoji(data.description)) {
+    const descText = stripHtml(data.description);
+    if (descText.length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["description"],
+        message: "Ürün açıklaması en az 10 karakter olmalıdır.",
+      });
+    }
+
+    if (containsEmoji(descText)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["description"],
@@ -282,12 +296,21 @@ const NewProduct = () => {
           height: 600,
           type: "png",
           data: qrData,
+          image: "/logo.png",
+          imageOptions: {
+            crossOrigin: "anonymous",
+            margin: 6,
+            imageSize: 0.35,
+          },
           dotsOptions: {
             color: "#000000",
             type: "rounded",
           },
           backgroundOptions: {
             color: "#ffffff",
+          },
+          qrOptions: {
+            errorCorrectionLevel: "H",
           },
         });
 
@@ -320,13 +343,8 @@ const NewProduct = () => {
         formData.append("qr", qrBlob, `qr-${qrToken}.png`);
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-      const response = await fetch(`${API_BASE_URL}/api/products`, {
+      const response = await apiFetch("/api/products", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-        },
         body: formData,
       });
 
@@ -407,12 +425,11 @@ const NewProduct = () => {
           <Label htmlFor="description">
             Ürün açıklaması <span className="text-destructive">*</span>
           </Label>
-          <Textarea
-            id="description"
+          <RichEditor
             placeholder="Ürünün detaylarını, öne çıkan özelliklerini ve kullanıldığı alanları açıklayın."
-            rows={4}
-            className="bg-card"
-            {...register("description")}
+            onChange={(html) =>
+              setValue("description", html, { shouldValidate: true })
+            }
           />
           {errors.description && (
             <p className="text-xs text-destructive">

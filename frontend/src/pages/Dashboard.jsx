@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { ArrowUpRight, BarChart3, QrCode, Users } from "lucide-react";
 import {
   Card,
@@ -9,8 +11,17 @@ import {
 } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
+
+const today = () => format(new Date(), "yyyy-MM-dd");
+const daysAgo = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return format(d, "yyyy-MM-dd");
+};
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [visits, setVisits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,15 +30,9 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
         const [productsRes, visitsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/products`, {
-            headers: { Accept: "application/json" },
-          }),
-          fetch(`${API_BASE_URL}/api/visits`, {
-            headers: { Accept: "application/json" },
-          }),
+          apiFetch("/api/products?all=1"),
+          apiFetch("/api/visits?all=1"),
         ]);
 
         if (!productsRes.ok || !visitsRes.ok) {
@@ -207,6 +212,7 @@ const Dashboard = () => {
       trend: formatTrend(todayTrend),
       subtitle: "Düne göre",
       icon: QrCode,
+      href: `/ziyaret-gecmisi?start=${today()}&end=${today()}`,
     },
     {
       label: "HAFTALIK TARAMA",
@@ -214,6 +220,7 @@ const Dashboard = () => {
       trend: formatTrend(scansTrend7),
       subtitle: "Önceki 7 güne göre",
       icon: QrCode,
+      href: `/ziyaret-gecmisi?start=${daysAgo(7)}&end=${today()}`,
     },
     {
       label: "AYLIK TARAMA",
@@ -221,6 +228,7 @@ const Dashboard = () => {
       trend: formatTrend(scansTrend30),
       subtitle: "Önceki 30 güne göre",
       icon: QrCode,
+      href: `/ziyaret-gecmisi?start=${daysAgo(30)}&end=${today()}`,
     },
     {
       label: "TOPLAM TARAMA",
@@ -228,6 +236,7 @@ const Dashboard = () => {
       trend: null,
       subtitle: "Toplam tarama sayısı",
       icon: QrCode,
+      href: "/ziyaret-gecmisi",
     },
   ];
 
@@ -238,6 +247,7 @@ const Dashboard = () => {
       trend: formatTrend(productsTodayTrend),
       subtitle: "Düne göre",
       icon: BarChart3,
+      href: `/urunler?start=${today()}&end=${today()}`,
     },
     {
       label: "HAFTALIK YENİ ÜRÜN",
@@ -245,6 +255,7 @@ const Dashboard = () => {
       trend: formatTrend(products7Trend),
       subtitle: "Önceki 7 güne göre",
       icon: BarChart3,
+      href: `/urunler?start=${daysAgo(7)}&end=${today()}`,
     },
     {
       label: "AYLIK YENİ ÜRÜN",
@@ -252,6 +263,7 @@ const Dashboard = () => {
       trend: formatTrend(products30Trend),
       subtitle: "Önceki 30 güne göre",
       icon: BarChart3,
+      href: `/urunler?start=${daysAgo(30)}&end=${today()}`,
     },
     {
       label: "TOPLAM ÜRÜN",
@@ -259,6 +271,7 @@ const Dashboard = () => {
       trend: null,
       subtitle: "Genel toplam",
       icon: BarChart3,
+      href: "/urunler",
     },
   ];
 
@@ -278,80 +291,49 @@ const Dashboard = () => {
         onSecondaryClick={() => console.log("Raporları dışa aktar")}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {scanCards.map((card) => (
-          <Card key={card.label} className="transition-colors hover:bg-muted">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                {card.label}
-              </CardTitle>
-              <div className="rounded-full bg-primary/10 p-2 text-primary">
-                <card.icon className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <div className="text-2xl font-semibold tracking-tight">
-                {card.value}
-              </div>
-              {typeof card.trend === "string" ? (
-                <CardDescription
-                  className={
-                    "text-xs " +
-                    (parseInt(card.trend, 10) > 0
-                      ? "text-emerald-600"
-                      : parseInt(card.trend, 10) < 0
-                      ? "text-red-500"
-                      : "text-muted-foreground")
-                  }
-                >
-                  {card.trend} {card.subtitle}
-                </CardDescription>
-              ) : (
-                <CardDescription className="text-xs text-muted-foreground">
-                  {card.subtitle}
-                </CardDescription>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </section>
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {productCards.map((card) => (
-          <Card key={card.label} className="transition-colors hover:bg-muted">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                {card.label}
-              </CardTitle>
-              <div className="rounded-full bg-primary/10 p-2 text-primary">
-                <card.icon className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <div className="text-2xl font-semibold tracking-tight">
-                {card.value}
-              </div>
-              {typeof card.trend === "string" ? (
-                <CardDescription
-                  className={
-                    "text-xs " +
-                    (parseInt(card.trend, 10) > 0
-                      ? "text-emerald-600"
-                      : parseInt(card.trend, 10) < 0
-                      ? "text-red-500"
-                      : "text-muted-foreground")
-                  }
-                >
-                  {card.trend} {card.subtitle}
-                </CardDescription>
-              ) : (
-                <CardDescription className="text-xs text-muted-foreground">
-                  {card.subtitle}
-                </CardDescription>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      {[scanCards, productCards].map((cards, sectionIdx) => (
+        <section key={sectionIdx} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {cards.map((card) => (
+            <Card
+              key={card.label}
+              className="cursor-pointer transition-colors hover:bg-muted"
+              onClick={() => navigate(card.href)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  {card.label}
+                </CardTitle>
+                <div className="rounded-full bg-primary/10 p-2 text-primary">
+                  <card.icon className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <div className="text-2xl font-semibold tracking-tight">
+                  {card.value}
+                </div>
+                {typeof card.trend === "string" ? (
+                  <CardDescription
+                    className={
+                      "text-xs " +
+                      (parseInt(card.trend, 10) > 0
+                        ? "text-emerald-600"
+                        : parseInt(card.trend, 10) < 0
+                        ? "text-red-500"
+                        : "text-muted-foreground")
+                    }
+                  >
+                    {card.trend} {card.subtitle}
+                  </CardDescription>
+                ) : (
+                  <CardDescription className="text-xs text-muted-foreground">
+                    {card.subtitle}
+                  </CardDescription>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      ))}
     </div>
   );
 };

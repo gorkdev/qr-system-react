@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import PageHeader from "@/components/ui/page-header";
+import { apiFetch } from "@/lib/api";
 
 const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
 const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB
@@ -151,9 +152,7 @@ const EditProduct = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
-          headers: { Accept: "application/json" },
-        });
+        const res = await apiFetch(`/api/products/${id}`);
         if (!res.ok) throw new Error("Ürün bulunamadı.");
         const data = await res.json();
         setProduct(data);
@@ -345,10 +344,9 @@ const EditProduct = () => {
         formData.append("pdf", pdfFile);
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      const res = await apiFetch(`/api/products/${id}`, {
         method: "POST",
         headers: {
-          Accept: "application/json",
           "X-HTTP-Method-Override": "PUT",
         },
         body: formData,

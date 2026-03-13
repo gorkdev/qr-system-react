@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import PageHeader from '@/components/ui/page-header'
@@ -18,6 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CalendarIcon, ChevronDown, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatDate } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
 
 const compactCalendarClassNames = {
   caption_label: 'text-xs font-medium select-none',
@@ -28,110 +31,81 @@ const compactCalendarClassNames = {
 
 const PAGE_SIZE = 10
 
-const normalizeText = (value) =>
-  (value ?? '')
-    .toString()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
+const defaultStart = () => {
+  const d = new Date()
+  d.setDate(d.getDate() - 29)
+  return format(d, 'yyyy-MM-dd')
+}
+const defaultEnd = () => format(new Date(), 'yyyy-MM-dd')
 
 const Visits = () => {
+  const [searchParams] = useSearchParams()
   const [visits, setVisits] = useState([])
+  const [total, setTotal] = useState(0)
+  const [lastPage, setLastPage] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 29)
-    return format(d, 'yyyy-MM-dd')
-  })
-  const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [startDate, setStartDate] = useState(
+    () => searchParams.get('start') || defaultStart(),
+  )
+  const [endDate, setEndDate] = useState(
+    () => searchParams.get('end') || defaultEnd(),
+  )
   const [currentPage, setCurrentPage] = useState(1)
 
+  const searchTimerRef = useRef(null)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Debounce search input (400ms)
   useEffect(() => {
-    const fetchVisits = async () => {
-      try {
-        setIsLoading(true)
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-        const response = await fetch(`${API_BASE_URL}/api/visits`, {
-          headers: {
-            Accept: 'application/json',
-          },
-        })
+    clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 400)
+    return () => clearTimeout(searchTimerRef.current)
+  }, [search])
 
-        if (!response.ok) {
-          throw new Error('Ziyaret geçmişi yüklenirken bir hata oluştu.')
-        }
-
-        const data = await response.json()
-        setVisits(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Ziyaret geçmişi yüklenirken hata oluştu', error)
-        toast('Ziyaret geçmişi yüklenemedi.', {
-          description: 'Lütfen sayfayı yenileyip tekrar deneyin.',
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchVisits()
-  }, [])
-
-  const filteredVisits = useMemo(() => {
-    const startMs = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null
-    const endMs = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null
-
-    return visits.filter((visit) => {
-      const title = visit.product?.title ?? ''
-      const matchesSearch =
-        !search.trim() ||
-        normalizeText(title).includes(normalizeText(search)) ||
-        (visit.ip_address ?? '').includes(search)
-
-      const matchesDevice =
-        deviceFilter === 'all'
-          ? true
-          : (visit.device_type ?? '').toLowerCase() === deviceFilter
-
-      let matchesDate = true
-      if (startMs || endMs) {
-        const visitTime = visit.visited_at ? new Date(visit.visited_at).getTime() : null
-        if (!visitTime) {
-          matchesDate = false
-        } else {
-          if (startMs && visitTime < startMs) matchesDate = false
-          if (endMs && visitTime > endMs) matchesDate = false
-        }
-      }
-
-      return matchesSearch && matchesDevice && matchesDate
-    })
-  }, [visits, search, deviceFilter, startDate, endDate])
-
-  const totalPages = Math.max(1, Math.ceil(filteredVisits.length / PAGE_SIZE))
-
-  const currentPageVisits = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredVisits.slice(start, start + PAGE_SIZE)
-  }, [filteredVisits, currentPage])
-
+  // Filtre değişince sayfayı 1'e sıfırla
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, deviceFilter, startDate, endDate])
+  }, [debouncedSearch, deviceFilter, startDate, endDate])
 
-  const formatDateTime = (value) => {
-    if (!value) return '-'
-    const d = new Date(value)
-    if (Number.isNaN(d.getTime())) return '-'
-    return d.toLocaleString('tr-TR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const fetchVisits = useCallback(async () => {
+    try {
+      setIsLoading(true)
+
+      const params = new URLSearchParams()
+      params.set('page', String(currentPage))
+      params.set('per_page', String(PAGE_SIZE))
+      if (startDate) params.set('start_date', startDate)
+      if (endDate) params.set('end_date', endDate)
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (deviceFilter !== 'all') params.set('device_type', deviceFilter)
+
+      const response = await apiFetch(`/api/visits?${params.toString()}`)
+
+      if (!response.ok) {
+        throw new Error('Ziyaret geçmişi yüklenirken bir hata oluştu.')
+      }
+
+      const json = await response.json()
+      setVisits(json.data ?? [])
+      setTotal(json.total ?? 0)
+      setLastPage(json.last_page ?? 1)
+    } catch (error) {
+      console.error('Ziyaret geçmişi yüklenirken hata oluştu', error)
+      toast('Ziyaret geçmişi yüklenemedi.', {
+        description: 'Lütfen sayfayı yenileyip tekrar deneyin.',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentPage, startDate, endDate, debouncedSearch, deviceFilter])
+
+  useEffect(() => {
+    fetchVisits()
+  }, [fetchVisits])
 
   const deviceLabel = (type) => {
     switch ((type ?? '').toLowerCase()) {
@@ -174,7 +148,7 @@ const Visits = () => {
               <div className='h-3 w-44 animate-pulse rounded bg-muted' />
             ) : (
               <p className='text-xs text-muted-foreground'>
-                Toplam {filteredVisits.length} ziyaret bulundu.
+                Toplam {total} ziyaret bulundu.
               </p>
             )}
           </div>
@@ -296,7 +270,7 @@ const Visits = () => {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : filteredVisits.length === 0 ? (
+              ) : visits.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className='py-12'>
                     <div className='flex flex-col items-center justify-center gap-2 text-muted-foreground'>
@@ -306,7 +280,7 @@ const Visits = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                currentPageVisits.map((visit) => (
+                visits.map((visit) => (
                   <TableRow key={visit.id}>
                     <TableCell className='max-w-xs'>
                       <div className='flex flex-col gap-0.5'>
@@ -333,7 +307,7 @@ const Visits = () => {
                       {browserLabel(visit.user_agent)}
                     </TableCell>
                     <TableCell className='text-right text-xs text-muted-foreground'>
-                      {formatDateTime(visit.visited_at)}
+                      {formatDate(visit.visited_at)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -342,7 +316,7 @@ const Visits = () => {
           </Table>
         </div>
 
-        {!isLoading && filteredVisits.length > PAGE_SIZE && (
+        {!isLoading && lastPage > 1 && (
           <div className='mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground'>
             <button
               type='button'
@@ -353,13 +327,13 @@ const Visits = () => {
               Önceki
             </button>
             <span>
-              Sayfa {currentPage} / {totalPages}
+              Sayfa {currentPage} / {lastPage}
             </span>
             <button
               type='button'
-              disabled={currentPage === totalPages}
+              disabled={currentPage === lastPage}
               onClick={() =>
-                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                setCurrentPage((p) => Math.min(lastPage, p + 1))
               }
               className='inline-flex h-7 items-center rounded-md border bg-background px-2 disabled:cursor-not-allowed disabled:opacity-50'
             >
@@ -373,4 +347,3 @@ const Visits = () => {
 }
 
 export default Visits
-

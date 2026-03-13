@@ -14,30 +14,57 @@ use Intervention\Image\Drivers\Gd\Driver;
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a paginated listing of the resource.
      *
-     * Optional query params:
-     * - start_date (Y-m-d)
-     * - end_date (Y-m-d)
+     * Query params:
+     * - start_date  (Y-m-d)
+     * - end_date    (Y-m-d)
+     * - search      (ürün başlığı veya açıklama)
+     * - status      (active|inactive)
+     * - page        (sayfa numarası, varsayılan 1)
+     * - per_page    (sayfa başına kayıt, varsayılan 10, maks 100)
+     * - all         (1 ise sayfalama yapılmaz, tüm kayıtlar döner — Dashboard/Stats gibi sayfalar için)
      */
     public function index(Request $request)
     {
         $query = Product::withCount('visits');
 
-        $startDate = $request->query('start_date');
-        $endDate   = $request->query('end_date');
-
-        if ($startDate) {
-            $start = Carbon::parse($startDate)->startOfDay();
-            $query->where('created_at', '>=', $start);
+        // Tarih filtreleri
+        if ($startDate = $request->query('start_date')) {
+            $query->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
         }
 
-        if ($endDate) {
-            $end = Carbon::parse($endDate)->endOfDay();
-            $query->where('created_at', '<=', $end);
+        if ($endDate = $request->query('end_date')) {
+            $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
         }
 
-        return $query->get();
+        // Durum filtresi
+        if ($status = $request->query('status')) {
+            if ($status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        // Arama (başlık veya açıklama)
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $query->orderByDesc('created_at');
+
+        // all=1 ise sayfalama yapma (Dashboard/Stats için)
+        if ($request->query('all') === '1') {
+            return $query->get();
+        }
+
+        $perPage = min((int) ($request->query('per_page', 10)), 100);
+
+        return response()->json($query->paginate($perPage));
     }
 
     /**
@@ -229,9 +256,14 @@ class ProductController extends Controller
      */
     public function showByToken(string $token)
     {
-        $product = Product::where('qr_token', $token)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $product = Product::where('qr_token', $token)->firstOrFail();
+
+        if (!$product->is_active) {
+            return response()->json([
+                'inactive' => true,
+                'message'  => 'Bu ürün şu anda kullanıma kapalıdır.',
+            ], 200);
+        }
 
         return response()->json($product);
     }
