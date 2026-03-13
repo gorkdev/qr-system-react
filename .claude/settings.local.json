@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/backend\" && php artisan test --filter=\"SiteSettingTest\" 2>&1)",
+      "Bash(cd \"C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/backend\" && php artisan test --filter=\"VisitTest\" 2>&1)",
+      "Bash(cd \"C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/backend\" && php artisan test --filter=\"ProductTest\" 2>&1)",
+      "Bash(cd \"C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/backend\" && php artisan test --filter=\"StatisticsTest\" 2>&1)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(cd C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/frontend && npx vite build 2>&1 | tail -20)",
+      "Bash(cd C:/Users/ajans/OneDrive/Masaüstü/qr-system-react/frontend && npx vite build 2>&1 | tail -5)"
+    ]
+  }
+}

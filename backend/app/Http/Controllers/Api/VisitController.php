@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class VisitController extends Controller
 {
@@ -37,10 +38,29 @@ class VisitController extends Controller
 
     /**
      * Display a listing of the visits.
+     *
+     * Optional query params:
+     * - start_date (Y-m-d)
+     * - end_date (Y-m-d)
      */
-    public function index()
+    public function index(Request $request)
     {
-        $visits = Visit::with('product')
+        $query = Visit::with('product');
+
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        if ($startDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $query->where('visited_at', '>=', $start);
+        }
+
+        if ($endDate) {
+            $end = Carbon::parse($endDate)->endOfDay();
+            $query->where('visited_at', '<=', $end);
+        }
+
+        $visits = $query
             ->orderByDesc('visited_at')
             ->limit(500)
             ->get();

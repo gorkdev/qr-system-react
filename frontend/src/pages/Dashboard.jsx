@@ -59,8 +59,22 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  const { totalQr, qrTrend, totalScans, scansTrend7, todayScans, todayTrend } =
-    useMemo(() => {
+  const {
+    totalProducts,
+    productsToday,
+    productsLast7,
+    productsLast30,
+    productsTodayTrend,
+    products7Trend,
+    products30Trend,
+    totalScans,
+    scansLast7,
+    scansLast30,
+    scansTrend7,
+    scansTrend30,
+    todayScans,
+    todayTrend,
+  } = useMemo(() => {
       const now = new Date();
       const startToday = new Date(
         now.getFullYear(),
@@ -73,19 +87,49 @@ const Dashboard = () => {
       startLast7.setDate(startToday.getDate() - 7);
       const startPrev7 = new Date(startLast7);
       startPrev7.setDate(startLast7.getDate() - 7);
+      const startLast30 = new Date(startToday);
+      startLast30.setDate(startToday.getDate() - 30);
+      const startPrev30 = new Date(startLast30);
+      startPrev30.setDate(startLast30.getDate() - 30);
 
       const inRange = (date, from, to) => date >= from && date < to;
 
-      const totalQr = products.length;
-      const qrLast7 = products.filter((p) => {
+      const totalProducts = products.length;
+
+      const productsToday = products.filter((p) => {
+        if (!p.created_at) return false;
+        const d = new Date(p.created_at);
+        return d >= startToday;
+      }).length;
+
+      const productsYesterday = products.filter((p) => {
+        if (!p.created_at) return false;
+        const d = new Date(p.created_at);
+        return inRange(d, startYesterday, startToday);
+      }).length;
+
+      const productsLast7 = products.filter((p) => {
         if (!p.created_at) return false;
         const d = new Date(p.created_at);
         return d >= startLast7;
       }).length;
-      const qrPrev7 = products.filter((p) => {
+
+      const productsLast30 = products.filter((p) => {
+        if (!p.created_at) return false;
+        const d = new Date(p.created_at);
+        return d >= startLast30;
+      }).length;
+
+      const productsPrev7 = products.filter((p) => {
         if (!p.created_at) return false;
         const d = new Date(p.created_at);
         return inRange(d, startPrev7, startLast7);
+      }).length;
+
+      const productsPrev30 = products.filter((p) => {
+        if (!p.created_at) return false;
+        const d = new Date(p.created_at);
+        return inRange(d, startPrev30, startLast30);
       }).length;
 
       const totalScans = visits.length;
@@ -98,6 +142,17 @@ const Dashboard = () => {
         if (!v.visited_at) return false;
         const d = new Date(v.visited_at);
         return inRange(d, startPrev7, startLast7);
+      }).length;
+
+      const scansLast30 = visits.filter((v) => {
+        if (!v.visited_at) return false;
+        const d = new Date(v.visited_at);
+        return d >= startLast30;
+      }).length;
+      const scansPrev30 = visits.filter((v) => {
+        if (!v.visited_at) return false;
+        const d = new Date(v.visited_at);
+        return inRange(d, startPrev30, startLast30);
       }).length;
 
       const todayScans = visits.filter((v) => {
@@ -120,12 +175,20 @@ const Dashboard = () => {
       };
 
       return {
-        totalQr,
-        qrTrend: percentChange(qrLast7, qrPrev7),
+        totalProducts,
+        productsToday,
+        productsLast7,
+        productsLast30,
         totalScans,
+        scansLast7,
+        scansLast30,
         scansTrend7: percentChange(scansLast7, scansPrev7),
+        scansTrend30: percentChange(scansLast30, scansPrev30),
         todayScans,
         todayTrend: percentChange(todayScans, yesterdayScans),
+        productsTodayTrend: percentChange(productsToday, productsYesterday),
+        products7Trend: percentChange(productsLast7, productsPrev7),
+        products30Trend: percentChange(productsLast30, productsPrev30),
       };
     }, [products, visits]);
 
@@ -137,27 +200,65 @@ const Dashboard = () => {
     return `${sign}${rounded}%`;
   };
 
-  const statCards = [
+  const scanCards = [
     {
-      label: "Toplam QR",
-      value: isLoading ? "—" : totalQr.toString(),
-      trend: formatTrend(qrTrend),
-      subtitle: "Son 7 güne göre",
-      icon: QrCode,
-    },
-    {
-      label: "Toplam tarama",
-      value: isLoading ? "—" : totalScans.toString(),
-      trend: formatTrend(scansTrend7),
-      subtitle: "Son 7 güne göre",
-      icon: QrCode,
-    },
-    {
-      label: "Bugünkü tarama",
+      label: "BUGÜNKÜ TARAMA",
       value: isLoading ? "—" : todayScans.toString(),
       trend: formatTrend(todayTrend),
       subtitle: "Düne göre",
       icon: QrCode,
+    },
+    {
+      label: "HAFTALIK TARAMA",
+      value: isLoading ? "—" : scansLast7.toString(),
+      trend: formatTrend(scansTrend7),
+      subtitle: "Önceki 7 güne göre",
+      icon: QrCode,
+    },
+    {
+      label: "AYLIK TARAMA",
+      value: isLoading ? "—" : scansLast30.toString(),
+      trend: formatTrend(scansTrend30),
+      subtitle: "Önceki 30 güne göre",
+      icon: QrCode,
+    },
+    {
+      label: "TOPLAM TARAMA",
+      value: isLoading ? "—" : totalScans.toString(),
+      trend: null,
+      subtitle: "Toplam tarama sayısı",
+      icon: QrCode,
+    },
+  ];
+
+  const productCards = [
+    {
+      label: "BUGÜN EKLENEN ÜRÜN",
+      value: isLoading ? "—" : productsToday.toString(),
+      trend: formatTrend(productsTodayTrend),
+      subtitle: "Düne göre",
+      icon: BarChart3,
+    },
+    {
+      label: "HAFTALIK YENİ ÜRÜN",
+      value: isLoading ? "—" : productsLast7.toString(),
+      trend: formatTrend(products7Trend),
+      subtitle: "Önceki 7 güne göre",
+      icon: BarChart3,
+    },
+    {
+      label: "AYLIK YENİ ÜRÜN",
+      value: isLoading ? "—" : productsLast30.toString(),
+      trend: formatTrend(products30Trend),
+      subtitle: "Önceki 30 güne göre",
+      icon: BarChart3,
+    },
+    {
+      label: "TOPLAM ÜRÜN",
+      value: isLoading ? "—" : totalProducts.toString(),
+      trend: null,
+      subtitle: "Genel toplam",
+      icon: BarChart3,
     },
   ];
 
@@ -177,8 +278,8 @@ const Dashboard = () => {
         onSecondaryClick={() => console.log("Raporları dışa aktar")}
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {statCards.map((card) => (
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {scanCards.map((card) => (
           <Card key={card.label} className="transition-colors hover:bg-muted">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -192,9 +293,61 @@ const Dashboard = () => {
               <div className="text-2xl font-semibold tracking-tight">
                 {card.value}
               </div>
-              <CardDescription className="text-xs text-emerald-600">
-                {card.trend} {card.subtitle}
-              </CardDescription>
+              {typeof card.trend === "string" ? (
+                <CardDescription
+                  className={
+                    "text-xs " +
+                    (parseInt(card.trend, 10) > 0
+                      ? "text-emerald-600"
+                      : parseInt(card.trend, 10) < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground")
+                  }
+                >
+                  {card.trend} {card.subtitle}
+                </CardDescription>
+              ) : (
+                <CardDescription className="text-xs text-muted-foreground">
+                  {card.subtitle}
+                </CardDescription>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {productCards.map((card) => (
+          <Card key={card.label} className="transition-colors hover:bg-muted">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                {card.label}
+              </CardTitle>
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <card.icon className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <div className="text-2xl font-semibold tracking-tight">
+                {card.value}
+              </div>
+              {typeof card.trend === "string" ? (
+                <CardDescription
+                  className={
+                    "text-xs " +
+                    (parseInt(card.trend, 10) > 0
+                      ? "text-emerald-600"
+                      : parseInt(card.trend, 10) < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground")
+                  }
+                >
+                  {card.trend} {card.subtitle}
+                </CardDescription>
+              ) : (
+                <CardDescription className="text-xs text-muted-foreground">
+                  {card.subtitle}
+                </CardDescription>
+              )}
             </CardContent>
           </Card>
         ))}

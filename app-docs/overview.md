@@ -25,5 +25,8 @@ Bu klasör, projede birlikte yaptığımız UI/UX ve front-end geliştirmelerini
 - `product-public-and-admin-tweaks.md`  
   Public ürün detay sayfası açılış overlay’i, dinamik başlık, admin ürünler ve ziyaret geçmişi tablolarında arama/pagination/bulunamadı UX iyileştirmeleri.
 
+- `site-settings-and-dashboard-metrics.md`  
+  Site QR okunabilirlik ayarı için backend/frontend altyapısı ve Dashboard’daki günlük/haftalık/aylık/toplam tarama kartları.
+
 Her dosya, hem teknik olarak hangi bileşenlerin/araçların kullanıldığını, hem de tasarım kararlarının arkasındaki mantığı anlatır.
 

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { format } from 'date-fns'
+import { tr } from 'date-fns/locale'
 import PageHeader from '@/components/ui/page-header'
 import {
   Table,
@@ -10,9 +12,19 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, SearchX } from 'lucide-react'
+import { CalendarIcon, ChevronDown, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
+
+const compactCalendarClassNames = {
+  caption_label: 'text-xs font-medium select-none',
+  weekday: 'flex-1 text-[0.65rem] font-normal text-muted-foreground select-none',
+  week_number: 'text-[0.65rem] text-muted-foreground select-none',
+  dropdowns: 'flex w-full items-center justify-center gap-1.5 text-xs font-medium',
+}
 
 const PAGE_SIZE = 10
 
@@ -28,6 +40,12 @@ const Visits = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 29)
+    return format(d, 'yyyy-MM-dd')
+  })
+  const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
@@ -61,6 +79,9 @@ const Visits = () => {
   }, [])
 
   const filteredVisits = useMemo(() => {
+    const startMs = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null
+    const endMs = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null
+
     return visits.filter((visit) => {
       const title = visit.product?.title ?? ''
       const matchesSearch =
@@ -73,9 +94,20 @@ const Visits = () => {
           ? true
           : (visit.device_type ?? '').toLowerCase() === deviceFilter
 
-      return matchesSearch && matchesDevice
+      let matchesDate = true
+      if (startMs || endMs) {
+        const visitTime = visit.visited_at ? new Date(visit.visited_at).getTime() : null
+        if (!visitTime) {
+          matchesDate = false
+        } else {
+          if (startMs && visitTime < startMs) matchesDate = false
+          if (endMs && visitTime > endMs) matchesDate = false
+        }
+      }
+
+      return matchesSearch && matchesDevice && matchesDate
     })
-  }, [visits, search, deviceFilter])
+  }, [visits, search, deviceFilter, startDate, endDate])
 
   const totalPages = Math.max(1, Math.ceil(filteredVisits.length / PAGE_SIZE))
 
@@ -86,7 +118,7 @@ const Visits = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, deviceFilter])
+  }, [search, deviceFilter, startDate, endDate])
 
   const formatDateTime = (value) => {
     if (!value) return '-'
@@ -138,12 +170,16 @@ const Visits = () => {
       <div className='rounded-xl'>
         <div className='mb-3 flex items-center justify-between gap-3'>
           <div className='space-y-0.5'>
-            <p className='text-xs text-muted-foreground'>
-              Toplam {filteredVisits.length} ziyaret listeleniyor.
-            </p>
+            {isLoading ? (
+              <div className='h-3 w-44 animate-pulse rounded bg-muted' />
+            ) : (
+              <p className='text-xs text-muted-foreground'>
+                Toplam {filteredVisits.length} ziyaret bulundu.
+              </p>
+            )}
           </div>
 
-          <div className='flex flex-1 items-center justify-end gap-2 md:gap-3'>
+          <div className='flex flex-1 flex-wrap items-center justify-end gap-2 md:gap-3'>
             <div className='hidden w-full max-w-xs md:block'>
               <Input
                 placeholder='Ürün başlığı veya IP ara'
@@ -152,6 +188,58 @@ const Visits = () => {
                 className='h-8 text-xs bg-card'
               />
             </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='h-8 min-w-[130px] justify-start text-[11px] font-normal bg-card'
+                >
+                  <CalendarIcon className='mr-1.5 h-3 w-3' />
+                  {startDate
+                    ? format(new Date(startDate), 'dd MMM yyyy', { locale: tr })
+                    : 'Başlangıç'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='end'>
+                <Calendar
+                  mode='single'
+                  locale={tr}
+                  classNames={compactCalendarClassNames}
+                  className='p-2 [&_[data-slot=button]]:text-xs'
+                  selected={startDate ? new Date(startDate) : undefined}
+                  onSelect={(day) =>
+                    setStartDate(day ? format(day, 'yyyy-MM-dd') : startDate)
+                  }
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='h-8 min-w-[130px] justify-start text-[11px] font-normal bg-card'
+                >
+                  <CalendarIcon className='mr-1.5 h-3 w-3' />
+                  {endDate
+                    ? format(new Date(endDate), 'dd MMM yyyy', { locale: tr })
+                    : 'Bitiş'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='end'>
+                <Calendar
+                  mode='single'
+                  locale={tr}
+                  classNames={compactCalendarClassNames}
+                  className='p-2 [&_[data-slot=button]]:text-xs'
+                  selected={endDate ? new Date(endDate) : undefined}
+                  onSelect={(day) =>
+                    setEndDate(day ? format(day, 'yyyy-MM-dd') : endDate)
+                  }
+                />
+              </PopoverContent>
+            </Popover>
             <Select value={deviceFilter} onValueChange={setDeviceFilter}>
               <SelectTrigger className='h-8 w-[150px] text-xs bg-card pl-3 pr-2'>
                 <div className='flex w-full items-center justify-between gap-1'>
@@ -183,11 +271,31 @@ const Visits = () => {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className='py-6 text-center text-sm'>
-                    Ziyaretler yükleniyor...
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: PAGE_SIZE }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className='max-w-xs'>
+                      <div className='space-y-1'>
+                        <div className='h-4 w-44 animate-pulse rounded bg-muted' />
+                        <div className='h-3 w-28 animate-pulse rounded bg-muted md:hidden' />
+                      </div>
+                    </TableCell>
+                    <TableCell className='hidden md:table-cell'>
+                      <div className='h-3 w-28 animate-pulse rounded bg-muted' />
+                    </TableCell>
+                    <TableCell className='hidden lg:table-cell'>
+                      <div className='h-3 w-24 animate-pulse rounded bg-muted' />
+                    </TableCell>
+                    <TableCell>
+                      <div className='h-5 w-20 animate-pulse rounded-full bg-muted' />
+                    </TableCell>
+                    <TableCell className='hidden lg:table-cell'>
+                      <div className='h-3 w-24 animate-pulse rounded bg-muted' />
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      <div className='ml-auto h-3 w-28 animate-pulse rounded bg-muted' />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : filteredVisits.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className='py-12'>

@@ -47,16 +47,21 @@ const ProductPublic = () => {
   const [error, setError] = useState(null)
   const [countdown, setCountdown] = useState(5)
   const [progress, setProgress] = useState(1)
+  const [qrEnabled, setQrEnabled] = useState(true)
+  const [settingsLoading, setSettingsLoading] = useState(true)
+  const [closedLang, setClosedLang] = useState('tr')
 
   useEffect(() => {
-    if (product?.title) {
+    if (!qrEnabled && !settingsLoading) {
+      document.title = 'Site şu anda kapalı | Ürün Detayı'
+    } else if (product?.title) {
       document.title = `${product.title} | Ürün Detayı`
     } else if (error) {
       document.title = 'Ürün bulunamadı | Ürün Detayı'
     } else {
       document.title = 'Ürün yükleniyor... | Ürün Detayı'
     }
-  }, [product?.title, error])
+  }, [product?.title, error, qrEnabled, settingsLoading])
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -94,6 +99,34 @@ const ProductPublic = () => {
     }
   }, [token])
 
+  // Site ayarlarını (QR okunabilirliği) yükle
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setSettingsLoading(true)
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+        const res = await fetch(`${API_BASE_URL}/api/site-settings`, {
+          headers: {
+            Accept: 'application/json',
+          },
+        })
+        if (!res.ok) {
+          throw new Error('Site ayarları yüklenirken bir hata oluştu.')
+        }
+        const data = await res.json()
+        const enabled = !!(data?.qr_enabled ?? data?.data?.qr_enabled ?? true)
+        setQrEnabled(enabled)
+      } catch (err) {
+        console.error('Site ayarları yüklenemedi', err)
+        setQrEnabled(true)
+      } finally {
+        setSettingsLoading(false)
+      }
+    }
+
+    fetchSettings()
+  }, [])
+
   // Geri sayım başladığında sürekli azalan bar animasyonu başlat
   useEffect(() => {
     if (countdown !== 5) return
@@ -121,7 +154,7 @@ const ProductPublic = () => {
   // Ürün yüklendiğinde arkaplanda ziyaret kaydı oluştur
   useEffect(() => {
     const recordVisit = async () => {
-      if (!product?.id) return
+      if (!product?.id || !qrEnabled) return
 
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -139,7 +172,7 @@ const ProductPublic = () => {
     }
 
     recordVisit()
-  }, [product?.id])
+  }, [product?.id, qrEnabled])
 
   const getPublicUrl = (path) => {
     if (!path) return null
@@ -157,9 +190,8 @@ const ProductPublic = () => {
 
   return (
     <div
-      className={`relative h-dvh overflow-y-scroll bg-background px-4 py-6 text-foreground ${
-        countdown > 0 ? 'pointer-events-none' : ''
-      }`}
+      className={`relative h-dvh overflow-y-scroll bg-background px-4 py-6 text-foreground ${countdown > 0 ? 'pointer-events-none' : ''
+        }`}
     >
       <div className='mx-auto flex w-full max-w-4xl flex-col gap-5'>
         <div className='overflow-hidden rounded-2xl border bg-card'>
@@ -173,6 +205,48 @@ const ProductPublic = () => {
           ) : !product ? (
             <div className='px-4 py-10 text-center text-sm text-muted-foreground'>
               Ürün bilgileri yükleniyor...
+            </div>
+          ) : !qrEnabled && !settingsLoading ? (
+            <div className='flex min-h-[260px] flex-col items-center justify-center gap-4 px-4 py-10 text-center'>
+              <div className='inline-flex items-center gap-2 rounded-full border bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground'>
+                <button
+                  type='button'
+                  onClick={() => setClosedLang('tr')}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'tr'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'opacity-70 hover:opacity-100'
+                    }`}
+                >
+                  <span>TR</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setClosedLang('en')}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === 'en'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'opacity-70 hover:opacity-100'
+                    }`}
+                >
+                  <span>EN</span>
+                </button>
+              </div>
+              {closedLang === 'tr' ? (
+                <>
+                  <h1 className='text-lg font-semibold'>Şu anda hizmet dışı</h1>
+                  <p className='max-w-md text-sm text-muted-foreground'>
+                    QR kod üzerinden ürün detayları geçici olarak kullanıma
+                    kapatılmıştır. Lütfen daha sonra tekrar deneyin.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className='text-lg font-semibold'>Currently unavailable</h1>
+                  <p className='max-w-md text-sm text-muted-foreground'>
+                    Product details via QR codes are temporarily disabled. Please
+                    try again later.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -195,9 +269,8 @@ const ProductPublic = () => {
                   <DialogTrigger asChild>
                     <button
                       type='button'
-                      className={`group relative w-full overflow-hidden border-b bg-black/60 ${
-                        youtubeEmbed ? 'mt-3' : ''
-                      }`}
+                      className={`group relative w-full overflow-hidden border-b bg-black/60 ${youtubeEmbed ? 'mt-3' : ''
+                        }`}
                     >
                       {/* Arka plan katmanı - tüm alanı kaplar, düşük opacity */}
                       <div className='pointer-events-none absolute inset-0 opacity-35'>

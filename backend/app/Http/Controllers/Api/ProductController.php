@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
@@ -14,10 +15,29 @@ class ProductController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Optional query params:
+     * - start_date (Y-m-d)
+     * - end_date (Y-m-d)
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Product::withCount('visits')->get();
+        $query = Product::withCount('visits');
+
+        $startDate = $request->query('start_date');
+        $endDate   = $request->query('end_date');
+
+        if ($startDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $query->where('created_at', '>=', $start);
+        }
+
+        if ($endDate) {
+            $end = Carbon::parse($endDate)->endOfDay();
+            $query->where('created_at', '<=', $end);
+        }
+
+        return $query->get();
     }
 
     /**

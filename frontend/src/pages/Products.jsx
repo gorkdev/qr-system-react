@@ -241,9 +241,13 @@ const Products = () => {
       <div className="rounded-xl">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">
-              Toplam {filteredProducts.length} ürün listeleniyor.
-            </p>
+            {isLoading ? (
+              <div className="h-3 w-44 animate-pulse rounded bg-muted" />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Toplam {filteredProducts.length} ürün bulundu.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-2 md:gap-3">
