@@ -7,6 +7,7 @@ import {
   PlusSquare,
   Settings,
   Trash2,
+  Clock3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ const navItems = [
   { label: "Ürünler", to: "/urunler", icon: Boxes },
   { label: "Yeni Ürün", to: "/yeni-urun", icon: PlusSquare },
   { label: "Ziyaret geçmişi", to: "/ziyaret-gecmisi", icon: BarChart3 },
+  { label: "İşlem geçmişi", to: "/islem-gecmisi", icon: Clock3 },
   { label: "Çöp kutusu", to: "/cop-kutusu", icon: Trash2 },
   { label: "Ayarlar", to: "/ayarlar", icon: Settings },
 ];

@@ -15,6 +15,7 @@ import Visits from '@/pages/Visits'
 import Trash from '@/pages/Trash'
 import NotFound from '@/pages/NotFound'
 import Login from '@/pages/Login'
+import ActivityLog from '@/pages/ActivityLog'
 
 const App = () => {
   return (
@@ -46,6 +47,7 @@ const App = () => {
                     <Route path='/ziyaret-gecmisi' element={<Visits />} />
                     <Route path='/cop-kutusu' element={<Trash />} />
                     <Route path='/ayarlar' element={<Settings />} />
+                    <Route path='/islem-gecmisi' element={<ActivityLog />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>
                 </AdminShell>

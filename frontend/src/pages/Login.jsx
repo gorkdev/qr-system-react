@@ -57,7 +57,8 @@ const Login = () => {
       navigate("/genel");
     } catch {
       toast("Sunucuya bağlanılamadı.", {
-        description: "Lütfen internet bağlantınızı ve sunucu durumunu kontrol edin.",
+        description:
+          "Lütfen internet bağlantınızı ve sunucu durumunu kontrol edin.",
       });
     } finally {
       setIsLoading(false);
@@ -70,11 +71,11 @@ const Login = () => {
       <div className="hidden w-1/2 items-center justify-center bg-foreground lg:flex">
         <div className="space-y-3 text-center">
           <h1 className="text-2xl font-bold tracking-[0.3em] text-background">
-            AKCAN GRUP
+            AKCAN GROUP
           </h1>
           <div className="h-px w-16 mx-auto bg-background/20" />
           <p className="text-xs tracking-widest text-background/40">
-            QR YONETİM PANELİ
+            QR YÖNETİM PANELİ
           </p>
         </div>
       </div>
@@ -84,7 +85,7 @@ const Login = () => {
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <h1 className="text-sm font-semibold tracking-[0.2em] text-foreground">
-              AKCAN GRUP
+              AKCAN GROUP
             </h1>
           </div>
 
@@ -161,12 +162,18 @@ const Login = () => {
           </DialogHeader>
 
           <div className="rounded-lg border bg-muted/30 px-4 py-3">
-            <p className="text-[11px] text-muted-foreground">Gönderilecek adres</p>
+            <p className="text-[11px] text-muted-foreground">
+              Gönderilecek adres
+            </p>
             <p className="mt-0.5 text-sm font-medium">akcangroup@gmail.com</p>
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setForgotOpen(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setForgotOpen(false)}
+            >
               Vazgeç
             </Button>
             <Button

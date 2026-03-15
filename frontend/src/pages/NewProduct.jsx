@@ -413,7 +413,7 @@ const NewProduct = () => {
           </Label>
           <Input
             id="title"
-            placeholder="Örn. Akcan Grup Özel QR Menü"
+            placeholder="Örn. Akcan Group Özel QR Menü"
             className="bg-card"
             {...register("title")}
           />

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ChevronDown, Plus, Trash2, PlayCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import RichEditor from "@/components/ui/rich-editor";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -67,12 +67,17 @@ const containsEmoji = (value) => {
   return emojiRegex.test(value);
 };
 
+const stripHtml = (html) => {
+  if (!html) return "";
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
+
 const editProductSchema = z
   .object({
     title: z.string().min(1, "Ürün başlığı zorunludur."),
-    description: z
-      .string()
-      .min(10, "Ürün açıklaması en az 10 karakter olmalıdır."),
+    description: z.string(),
     youtube: z.string().optional().or(z.literal("")),
     is_active: z.enum(["1", "0"], {
       required_error: "Ürün durumu zorunludur.",
@@ -87,7 +92,16 @@ const editProductSchema = z
       });
     }
 
-    if (containsEmoji(data.description)) {
+    const descText = stripHtml(data.description);
+    if (descText.length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["description"],
+        message: "Ürün açıklaması en az 10 karakter olmalıdır.",
+      });
+    }
+
+    if (containsEmoji(descText)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["description"],
@@ -122,6 +136,7 @@ const EditProduct = () => {
   const [fileInputsKey, setFileInputsKey] = useState(0);
   const [imageBytesTotal, setImageBytesTotal] = useState(0);
   const [initialAltSlotCount, setInitialAltSlotCount] = useState(2);
+  const [richEditorKey, setRichEditorKey] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -164,7 +179,7 @@ const EditProduct = () => {
 
         reset({
           title: data.title || "",
-          description: data.description || "",
+        description: data.description || "",
           youtube: data.youtube_url || "",
           is_active: data.is_active ? "1" : "0",
         });
@@ -331,6 +346,7 @@ const EditProduct = () => {
     setAltFiles({});
     setFileInputsKey((prev) => prev + 1);
     setImageBytesTotal(0);
+    setRichEditorKey((prev) => prev + 1);
     toast("Form temizlendi.", {
       description: "Tüm alanlar ürün verilerine döndürüldü.",
     });
@@ -631,7 +647,7 @@ const EditProduct = () => {
           </Label>
           <Input
             id="title"
-            placeholder="Örn. Akcan Grup Özel QR Menü"
+            placeholder="Örn. Akcan Group Özel QR Menü"
             className="bg-card"
             {...register("title")}
           />
@@ -644,12 +660,13 @@ const EditProduct = () => {
           <Label htmlFor="description">
             Ürün açıklaması <span className="text-destructive">*</span>
           </Label>
-          <Textarea
-            id="description"
+          <RichEditor
+            key={richEditorKey}
+            content={getValues("description") || ""}
             placeholder="Ürünün detaylarını, öne çıkan özelliklerini ve kullanıldığı alanları açıklayın."
-            rows={4}
-            className="bg-card"
-            {...register("description")}
+            onChange={(html) =>
+              setValue("description", html, { shouldValidate: true, shouldDirty: true })
+            }
           />
           {errors.description && (
             <p className="text-xs text-destructive">

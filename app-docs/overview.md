@@ -17,6 +17,7 @@ Bu klasör, projedeki UI/UX ve teknik kararları özetleyen dokümanları içeri
 | `product-public-and-admin-tweaks.md` | Public ürün sayfası overlay, admin tablolarında arama / pagination / “bulunamadı” UX. |
 | `site-settings-and-dashboard-metrics.md` | Site QR ayarı (backend + frontend), Dashboard tarama metrikleri (günlük / haftalık / aylık). |
 | `soft-delete-trash-products.md` | Ürün soft-delete, 30 günlük çöp kutusu, geri getir, purge (kalıcı silme) ve zamanlanmış görev. |
+| `activity-logs-and-history.md` | Admin işlemleri için otomatik loglama (İşlem Geçmişi), backend kayıt yapısı ve admin tablosu. |
 
 ---
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SiteSettingController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\VisitController;
+use App\Http\Controllers\Api\ActivityLogController;
 
 // Public routes
 Route::post('login', [AuthController::class, 'login']);
@@ -24,4 +25,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
     Route::get('visits', [VisitController::class, 'index']);
     Route::put('site-settings', [SiteSettingController::class, 'update']);
+    Route::get('activity-logs', [ActivityLogController::class, 'index']);
 });

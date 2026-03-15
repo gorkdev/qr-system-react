@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -142,6 +143,22 @@ class ProductController extends Controller
             'qr_token'         => $validated['qr_token'],
             'is_active'        => $validated['is_active'],
         ]);
+
+        if ($request->user()) {
+            ActivityLog::create([
+                'user_id'      => $request->user()->id,
+                'action'       => 'product_created',
+                'subject_type' => Product::class,
+                'subject_id'   => $product->id,
+                'description'  => 'Ürün oluşturuldu: ' . ($product->title ?? ''),
+                'ip_address'   => $request->ip(),
+                'user_agent'   => (string) $request->header('User-Agent'),
+                'metadata'     => [
+                    'product_id' => $product->id,
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Product created',
             'data'    => $product,
@@ -244,6 +261,21 @@ class ProductController extends Controller
             'is_active'        => $validated['is_active'],
         ]);
 
+        if ($request->user()) {
+            ActivityLog::create([
+                'user_id'      => $request->user()->id,
+                'action'       => 'product_updated',
+                'subject_type' => Product::class,
+                'subject_id'   => $product->id,
+                'description'  => 'Ürün güncellendi: ' . ($product->title ?? ''),
+                'ip_address'   => $request->ip(),
+                'user_agent'   => (string) $request->header('User-Agent'),
+                'metadata'     => [
+                    'product_id' => $product->id,
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Product updated',
             'data'    => $product->fresh(),
@@ -258,6 +290,21 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
         $product->delete();
 
+        if (request()->user()) {
+            ActivityLog::create([
+                'user_id'      => request()->user()->id,
+                'action'       => 'product_deleted',
+                'subject_type' => Product::class,
+                'subject_id'   => $product->id,
+                'description'  => 'Ürün çöp kutusuna taşındı: ' . ($product->title ?? ''),
+                'ip_address'   => request()->ip(),
+                'user_agent'   => (string) request()->header('User-Agent'),
+                'metadata'     => [
+                    'product_id' => $product->id,
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Ürün çöp kutusuna taşındı. 30 gün içinde geri getirebilirsiniz.',
         ]);
@@ -271,6 +318,21 @@ class ProductController extends Controller
         $product = Product::onlyTrashed()->findOrFail($id);
         $product->restore();
 
+        if (request()->user()) {
+            ActivityLog::create([
+                'user_id'      => request()->user()->id,
+                'action'       => 'product_restored',
+                'subject_type' => Product::class,
+                'subject_id'   => $product->id,
+                'description'  => 'Ürün geri getirildi: ' . ($product->title ?? ''),
+                'ip_address'   => request()->ip(),
+                'user_agent'   => (string) request()->header('User-Agent'),
+                'metadata'     => [
+                    'product_id' => $product->id,
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Ürün geri getirildi.',
             'data'    => $product->fresh(),
@@ -282,7 +344,11 @@ class ProductController extends Controller
      */
     public function trashed(Request $request)
     {
-        $query = Product::onlyTrashed()->withCount('visits')->orderByDesc('deleted_at');
+        // Önce kalıcı silinmesine en az süre kalan ürünler (en eski deleted_at)
+        // ardından silinme tarihine göre sırala.
+        $query = Product::onlyTrashed()
+            ->withCount('visits')
+            ->orderBy('deleted_at', 'asc');
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
@@ -315,6 +381,21 @@ class ProductController extends Controller
             Product::withTrashed()->where('id', $product->id)->forceDelete();
             $count++;
         }
+        if (request()->user() && $count > 0) {
+            ActivityLog::create([
+                'user_id'      => request()->user()->id,
+                'action'       => 'products_purged',
+                'subject_type' => Product::class,
+                'subject_id'   => null,
+                'description'  => "{$count} ürün kalıcı olarak silindi.",
+                'ip_address'   => request()->ip(),
+                'user_agent'   => (string) request()->header('User-Agent'),
+                'metadata'     => [
+                    'purged_count' => $count,
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => $count > 0 ? "{$count} ürün kalıcı olarak silindi." : 'Silinecek ürün yok.',
             'purged_count' => $count,
