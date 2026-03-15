@@ -58,6 +58,10 @@ const Dashboard = () => {
         });
       } finally {
         setIsLoading(false);
+        // Sayfa gösterildikten sonra arka planda çöp kontrolü (kullanıcı beklemez)
+        apiFetch("/api/products/purge-trashed", { method: "POST" }).catch(
+          () => {},
+        );
       }
     };
 
@@ -80,122 +84,122 @@ const Dashboard = () => {
     todayScans,
     todayTrend,
   } = useMemo(() => {
-      const now = new Date();
-      const startToday = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      );
-      const startYesterday = new Date(startToday);
-      startYesterday.setDate(startToday.getDate() - 1);
-      const startLast7 = new Date(startToday);
-      startLast7.setDate(startToday.getDate() - 7);
-      const startPrev7 = new Date(startLast7);
-      startPrev7.setDate(startLast7.getDate() - 7);
-      const startLast30 = new Date(startToday);
-      startLast30.setDate(startToday.getDate() - 30);
-      const startPrev30 = new Date(startLast30);
-      startPrev30.setDate(startLast30.getDate() - 30);
+    const now = new Date();
+    const startToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startYesterday = new Date(startToday);
+    startYesterday.setDate(startToday.getDate() - 1);
+    const startLast7 = new Date(startToday);
+    startLast7.setDate(startToday.getDate() - 7);
+    const startPrev7 = new Date(startLast7);
+    startPrev7.setDate(startLast7.getDate() - 7);
+    const startLast30 = new Date(startToday);
+    startLast30.setDate(startToday.getDate() - 30);
+    const startPrev30 = new Date(startLast30);
+    startPrev30.setDate(startLast30.getDate() - 30);
 
-      const inRange = (date, from, to) => date >= from && date < to;
+    const inRange = (date, from, to) => date >= from && date < to;
 
-      const totalProducts = products.length;
+    const totalProducts = products.length;
 
-      const productsToday = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return d >= startToday;
-      }).length;
+    const productsToday = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return d >= startToday;
+    }).length;
 
-      const productsYesterday = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return inRange(d, startYesterday, startToday);
-      }).length;
+    const productsYesterday = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return inRange(d, startYesterday, startToday);
+    }).length;
 
-      const productsLast7 = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return d >= startLast7;
-      }).length;
+    const productsLast7 = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return d >= startLast7;
+    }).length;
 
-      const productsLast30 = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return d >= startLast30;
-      }).length;
+    const productsLast30 = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return d >= startLast30;
+    }).length;
 
-      const productsPrev7 = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return inRange(d, startPrev7, startLast7);
-      }).length;
+    const productsPrev7 = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return inRange(d, startPrev7, startLast7);
+    }).length;
 
-      const productsPrev30 = products.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return inRange(d, startPrev30, startLast30);
-      }).length;
+    const productsPrev30 = products.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return inRange(d, startPrev30, startLast30);
+    }).length;
 
-      const totalScans = visits.length;
-      const scansLast7 = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return d >= startLast7;
-      }).length;
-      const scansPrev7 = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return inRange(d, startPrev7, startLast7);
-      }).length;
+    const totalScans = visits.length;
+    const scansLast7 = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return d >= startLast7;
+    }).length;
+    const scansPrev7 = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return inRange(d, startPrev7, startLast7);
+    }).length;
 
-      const scansLast30 = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return d >= startLast30;
-      }).length;
-      const scansPrev30 = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return inRange(d, startPrev30, startLast30);
-      }).length;
+    const scansLast30 = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return d >= startLast30;
+    }).length;
+    const scansPrev30 = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return inRange(d, startPrev30, startLast30);
+    }).length;
 
-      const todayScans = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return d >= startToday;
-      }).length;
-      const yesterdayScans = visits.filter((v) => {
-        if (!v.visited_at) return false;
-        const d = new Date(v.visited_at);
-        return inRange(d, startYesterday, startToday);
-      }).length;
+    const todayScans = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return d >= startToday;
+    }).length;
+    const yesterdayScans = visits.filter((v) => {
+      if (!v.visited_at) return false;
+      const d = new Date(v.visited_at);
+      return inRange(d, startYesterday, startToday);
+    }).length;
 
-      const percentChange = (current, previous) => {
-        if (previous === 0) {
-          if (current === 0) return 0;
-          return 100;
-        }
-        return ((current - previous) / previous) * 100;
-      };
+    const percentChange = (current, previous) => {
+      if (previous === 0) {
+        if (current === 0) return 0;
+        return 100;
+      }
+      return ((current - previous) / previous) * 100;
+    };
 
-      return {
-        totalProducts,
-        productsToday,
-        productsLast7,
-        productsLast30,
-        totalScans,
-        scansLast7,
-        scansLast30,
-        scansTrend7: percentChange(scansLast7, scansPrev7),
-        scansTrend30: percentChange(scansLast30, scansPrev30),
-        todayScans,
-        todayTrend: percentChange(todayScans, yesterdayScans),
-        productsTodayTrend: percentChange(productsToday, productsYesterday),
-        products7Trend: percentChange(productsLast7, productsPrev7),
-        products30Trend: percentChange(productsLast30, productsPrev30),
-      };
-    }, [products, visits]);
+    return {
+      totalProducts,
+      productsToday,
+      productsLast7,
+      productsLast30,
+      totalScans,
+      scansLast7,
+      scansLast30,
+      scansTrend7: percentChange(scansLast7, scansPrev7),
+      scansTrend30: percentChange(scansLast30, scansPrev30),
+      todayScans,
+      todayTrend: percentChange(todayScans, yesterdayScans),
+      productsTodayTrend: percentChange(productsToday, productsYesterday),
+      products7Trend: percentChange(productsLast7, productsPrev7),
+      products30Trend: percentChange(productsLast30, productsPrev30),
+    };
+  }, [products, visits]);
 
   const formatTrend = (value) => {
     if (Number.isNaN(value) || value === null || typeof value === "undefined")
@@ -292,7 +296,10 @@ const Dashboard = () => {
       />
 
       {[scanCards, productCards].map((cards, sectionIdx) => (
-        <section key={sectionIdx} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section
+          key={sectionIdx}
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        >
           {cards.map((card) => (
             <Card
               key={card.label}
@@ -318,8 +325,8 @@ const Dashboard = () => {
                       (parseInt(card.trend, 10) > 0
                         ? "text-emerald-600"
                         : parseInt(card.trend, 10) < 0
-                        ? "text-red-500"
-                        : "text-muted-foreground")
+                          ? "text-red-500"
+                          : "text-yellow-500")
                     }
                   >
                     {card.trend} {card.subtitle}

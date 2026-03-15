@@ -128,6 +128,7 @@ const NewProduct = () => {
   const [pdfFile, setPdfFile] = useState(null);
   const [altFiles, setAltFiles] = useState({});
   const [fileInputsKey, setFileInputsKey] = useState(0);
+  const [richEditorKey, setRichEditorKey] = useState(0);
   const [imageBytesTotal, setImageBytesTotal] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -220,8 +221,7 @@ const NewProduct = () => {
     if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
       if (e?.target) e.target.value = "";
       toast("Toplam görsel boyutu çok büyük.", {
-        description:
-          "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+        description: "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
       });
       return;
     }
@@ -276,6 +276,7 @@ const NewProduct = () => {
     setPdfFile(null);
     setAltFiles({});
     setFileInputsKey((prev) => prev + 1);
+    setRichEditorKey((prev) => prev + 1);
     setImageBytesTotal(0);
   };
 
@@ -285,7 +286,7 @@ const NewProduct = () => {
       const qrToken =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? `${crypto.randomUUID()}-${Math.random().toString(36).slice(2)}`
-          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
       const qrData = `${window.location.origin}/qr/${qrToken}`;
 
@@ -363,7 +364,7 @@ const NewProduct = () => {
       }
 
       toast("Ürün kaydedildi.", {
-        description: "Ürün başarıyla veritabanına kaydedildi.",
+        description: "Ürün başarıyla sisteme kaydedildi.",
       });
       handleReset();
     } catch (error) {
@@ -426,6 +427,8 @@ const NewProduct = () => {
             Ürün açıklaması <span className="text-destructive">*</span>
           </Label>
           <RichEditor
+            key={richEditorKey}
+            content=""
             placeholder="Ürünün detaylarını, öne çıkan özelliklerini ve kullanıldığı alanları açıklayın."
             onChange={(html) =>
               setValue("description", html, { shouldValidate: true })
@@ -530,10 +533,7 @@ const NewProduct = () => {
                           alt={altNames[image.id] || "Alt görsel önizleme"}
                           className="max-h-14 max-w-full rounded object-contain"
                         />
-                        <p
-                          className="mt-1 truncate"
-                          title={altNames[image.id]}
-                        >
+                        <p className="mt-1 truncate" title={altNames[image.id]}>
                           {altNames[image.id]}
                         </p>
                       </div>

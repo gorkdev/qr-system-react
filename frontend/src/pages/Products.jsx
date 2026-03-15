@@ -35,9 +35,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import QRCodeStyling from "qr-code-styling";
-import { CalendarIcon, ChevronDown, Pencil, QrCode, SearchX } from "lucide-react";
+import {
+  CalendarIcon,
+  ChevronDown,
+  Pencil,
+  QrCode,
+  SearchX,
+} from "lucide-react";
 import { toast } from "sonner";
-import { formatDateShort } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 
 const compactCalendarClassNames = {
@@ -456,14 +462,18 @@ const Products = () => {
                           </span>
                           <div
                             className="line-clamp-1 text-[11px] text-muted-foreground md:hidden [&>*]:inline"
-                            dangerouslySetInnerHTML={{ __html: product.description }}
+                            dangerouslySetInnerHTML={{
+                              __html: product.description,
+                            }}
                           />
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-md">
                         <div
                           className="truncate text-xs text-muted-foreground [&>*]:inline [&_br]:hidden [&_ul]:inline [&_ol]:inline [&_li]:inline [&_li]:list-none [&_li]:mr-1 [&_blockquote]:inline [&_h2]:inline [&_h2]:text-xs [&_h2]:font-semibold [&_p]:inline"
-                          dangerouslySetInnerHTML={{ __html: product.description }}
+                          dangerouslySetInnerHTML={{
+                            __html: product.description,
+                          }}
                         />
                       </TableCell>
                       <TableCell>
@@ -479,7 +489,7 @@ const Products = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
-                        {formatDateShort(product.created_at)}
+                        {formatDate(product.created_at)}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-center text-xs text-muted-foreground">
                         {typeof product.visits_count === "number"
@@ -613,9 +623,7 @@ const Products = () => {
             <button
               type="button"
               disabled={currentPage === lastPage}
-              onClick={() =>
-                setCurrentPage((p) => Math.min(lastPage, p + 1))
-              }
+              onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
               className="inline-flex h-7 items-center rounded-md border bg-background px-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Sonraki

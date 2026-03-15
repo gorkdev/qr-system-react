@@ -142,26 +142,32 @@ class VisitTest extends TestCase
     }
 
     /* ------------------------------------------------------------------ */
-    /*  INDEX (list visits)                                                */
+    /*  INDEX (list visits) — requires auth                                 */
     /* ------------------------------------------------------------------ */
+
+    public function test_list_visits_requires_authentication(): void
+    {
+        $response = $this->getJson('/api/visits');
+        $response->assertUnauthorized();
+    }
 
     public function test_can_list_visits(): void
     {
         $product = Product::factory()->create();
         Visit::factory()->count(5)->create(['product_id' => $product->id]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits');
 
         $response->assertOk()
-            ->assertJsonCount(5);
+            ->assertJsonCount(5, 'data');
     }
 
     public function test_list_returns_empty_array_when_no_visits(): void
     {
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits');
 
         $response->assertOk()
-            ->assertJsonCount(0);
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_list_includes_product_relationship(): void
@@ -169,7 +175,7 @@ class VisitTest extends TestCase
         $product = Product::factory()->create(['title' => 'İlişkili Ürün']);
         Visit::factory()->create(['product_id' => $product->id]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits');
 
         $response->assertOk()
             ->assertJsonFragment(['title' => 'İlişkili Ürün']);
@@ -192,8 +198,8 @@ class VisitTest extends TestCase
             'visited_at' => now()->subDay(),
         ]);
 
-        $response = $this->getJson('/api/visits');
-        $dates = collect($response->json())->pluck('visited_at');
+        $response = $this->actingAsApiUser()->getJson('/api/visits');
+        $dates = collect($response->json('data'))->pluck('visited_at');
 
         $this->assertTrue(
             $dates->first() > $dates->last(),
@@ -201,14 +207,15 @@ class VisitTest extends TestCase
         );
     }
 
-    public function test_list_limits_to_500_visits(): void
+    public function test_list_respects_per_page_limit(): void
     {
         $product = Product::factory()->create();
-        Visit::factory()->count(510)->create(['product_id' => $product->id]);
+        Visit::factory()->count(25)->create(['product_id' => $product->id]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?per_page=10');
 
         $response->assertOk()
-            ->assertJsonCount(500);
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('total', 25);
     }
 }

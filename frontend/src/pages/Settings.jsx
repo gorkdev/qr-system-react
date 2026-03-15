@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -159,6 +160,73 @@ const Settings = () => {
 
     fetchSettings();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Ayarlar"
+          description="Sistem davranışlarını ve site durumunu buradan yönetebilirsiniz."
+        />
+
+        <div className="rounded-lg border bg-card">
+          <div className="flex flex-col gap-4 border-b p-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-1">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-full max-w-md" />
+            </div>
+            <Skeleton className="h-5 w-12 rounded-full" />
+          </div>
+          <div className="space-y-4 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-72 max-w-full" />
+              </div>
+              <Skeleton className="h-6 w-11 shrink-0 rounded-full" />
+            </div>
+            <div className="rounded-xl border bg-muted/30 px-4 py-3">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="mt-2 h-3 w-full max-w-sm" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t p-6">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-20" />
+          </div>
+        </div>
+
+        <div className="rounded-lg border bg-card">
+          <div className="border-b p-6">
+            <div className="space-y-1">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-full max-w-md" />
+            </div>
+          </div>
+          <div className="space-y-4 p-6">
+            <div className="w-full space-y-4 md:w-1/2">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t p-6">
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

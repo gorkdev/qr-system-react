@@ -34,7 +34,7 @@ export function formatDate(value) {
   }
 
   const day = d.getDate();
-  const month = d.toLocaleString("tr-TR", { month: "short" });
+  const month = d.toLocaleString("tr-TR", { month: "long" });
 
   if (d.getFullYear() === now.getFullYear()) {
     return `${day} ${month}, ${time}`;
@@ -43,33 +43,4 @@ export function formatDate(value) {
   return `${day} ${month} ${d.getFullYear()}, ${time}`;
 }
 
-/**
- * Sadece tarih kısmını okunabilir formata çevirir (saatsiz).
- *
- * - Bugün       → "Bugün"
- * - Dün         → "Dün"
- * - Bu yıl      → "13 Mar"
- * - Farklı yıl  → "13 Mar 2025"
- */
-export function formatDateShort(value) {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "-";
 
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfYesterday = new Date(startOfToday);
-  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-
-  if (d >= startOfToday) return "Bugün";
-  if (d >= startOfYesterday) return "Dün";
-
-  const day = d.getDate();
-  const month = d.toLocaleString("tr-TR", { month: "short" });
-
-  if (d.getFullYear() === now.getFullYear()) {
-    return `${day} ${month}`;
-  }
-
-  return `${day} ${month} ${d.getFullYear()}`;
-}

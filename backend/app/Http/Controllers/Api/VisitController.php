@@ -54,7 +54,9 @@ class VisitController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Visit::with('product');
+        $query = Visit::with(['product' => function ($q) {
+            $q->withTrashed();
+        }]);
 
         // Tarih filtreleri
         if ($startDate = $request->query('start_date')) {
@@ -75,7 +77,7 @@ class VisitController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('ip_address', 'like', "%{$search}%")
                   ->orWhereHas('product', function ($pq) use ($search) {
-                      $pq->where('title', 'like', "%{$search}%");
+                      $pq->withTrashed()->where('title', 'like', "%{$search}%");
                   });
             });
         }

@@ -1,62 +1,69 @@
 # Layout ve Navigasyon Yapısı
 
-Bu doküman, admin panelinin temel layout'unu, sidebar navigasyonunu ve sayfa/URL mimarisini özetler.
+Bu doküman, admin panelinin layout’unu, sidebar navigasyonunu ve sayfa/URL yapısını özetler.
 
-## Genel Layout
+---
 
-- Ana layout bileşeni: `AdminShell` (`src/components/layout/AdminShell.jsx`)
-- Yapı:
-  - Sol tarafta tam yükseklikte sabit bir sidebar.
-  - Sağ tarafta, tüm sayfaların içeriklerini taşıyan ana içerik alanı.
-- Tasarım:
-  - Light theme odaklı, `bg-background`, `text-foreground` ve `bg-muted/30` gibi shadcn uyumlu Tailwind utility sınıfları kullanılıyor.
-  - İçerik alanı maksimum genişlikte (`max-w-6xl`) ama tüm viewport yüksekliğini dolduracak şekilde ayarlandı.
+## Genel layout
+
+- **Bileşen:** `AdminShell` (`frontend/src/components/layout/AdminShell.jsx`)
+- **Yapı:** Sol tarafta sabit sidebar, sağda ana içerik alanı.
+- **Tasarım:** Tailwind + shadcn uyumlu sınıflar (`bg-background`, `text-foreground`, `bg-muted/30` vb.). İçerik alanı `max-w-6xl` ile sınırlı, viewport yüksekliği kullanılır.
+
+---
 
 ## Sidebar
 
-Dosya: `src/components/navigation/Sidebar.jsx`
+**Dosya:** `frontend/src/components/navigation/Sidebar.jsx`
 
-- Sol tarafta sabit, `md` breakpoint’ten itibaren görünen bir sidebar.
-- Markalama:
-  - Üstte marka adı: **Akcan Grup**
-  - Minimal tipografi: `text-xl font-semibold tracking-wide`
-- Linkler (navItems):
-  - **Genel** → `/genel`
-  - **İstatistikler** → `/istatistikler`
-  - **Ürünler** → `/urunler`
-  - **Yeni Ürün** → `/yeni-urun`
-  - **Ayarlar** → `/ayarlar`
-- Aktif link:
-  - `NavLink` ile `isActive` kontrol ediliyor.
-  - Aktif durumda: `bg-primary/10 text-primary`
-  - Hover durumunda: `hover:bg-muted hover:text-foreground`
-- Alt kısım (auth bilgisi):
-  - `admin` badge (`Badge` bileşeni) ve `Çıkış yap` butonu (`variant='destructive'`) ile basit bir oturum durumu gösterimi var.
+- Sol tarafta sabit; `md` breakpoint’ten itibaren görünür.
+- **Marka:** Üstte “Akcan Grup” metni, minimal tipografi.
+- **Menü öğeleri (navItems):**
 
-## Router Yapısı
+| Etiket           | URL              | İkon          |
+|------------------|------------------|---------------|
+| Genel            | `/genel`         | LayoutDashboard |
+| İstatistikler    | `/istatistikler` | BarChart3    |
+| Ürünler          | `/urunler`       | Boxes         |
+| Yeni Ürün        | `/yeni-urun`     | PlusSquare    |
+| Ziyaret geçmişi  | `/ziyaret-gecmisi` | BarChart3  |
+| Çöp kutusu       | `/cop-kutusu`    | Trash2        |
+| Ayarlar          | `/ayarlar`       | Settings     |
 
-Dosya: `src/App.jsx`
+- **Aktif link:** `NavLink` + `isActive`; aktifte `bg-primary/10 text-primary`, hover’da `hover:bg-muted hover:text-foreground`. Motion ile aktif arka plan animasyonu.
+- **Alt kısım:** Oturum bilgisi (badge) ve “Çıkış yap” butonu (`variant='destructive'`).
 
-```jsx
-<Routes>
-  <Route path='/' element={<Navigate to='/genel' replace />} />
-  <Route path='/genel' element={<Dashboard />} />
-  <Route path='/istatistikler' element={<Stats />} />
-  <Route path='/urunler' element={<Products />} />
-  <Route path='/yeni-urun' element={<NewProduct />} />
-  <Route path='/ayarlar' element={<Settings />} />
-</Routes>
-```
+---
 
-- Kök `/` adresi otomatik olarak `/genel` sayfasına yönlendiriliyor.
-- Tüm sayfalar `AdminShell` içerisinde render ediliyor; böylece layout tek bir noktadan yönetiliyor.
+## Router yapısı
 
-## URL ve İsimlendirme Kararları
+**Dosya:** `frontend/src/App.jsx`
 
-- URL’ler tamamen Türkçe ve sade tutuldu:
-  - `/genel`, `/istatistikler`, `/urunler`, `/yeni-urun`, `/ayarlar`
-- Sidebar’da görünen isimler de aynı dil ve tonla eşleşiyor.
-- Bu yaklaşım:
-  - Paneli kullanan kişi için daha anlaşılır bir bilgi mimarisi sağlıyor.
-  - SEO kritik olmadığı için (admin paneli), URL’lerin Türkçe olması bir problem oluşturmuyor.
+### Auth dışı (public)
 
+- `/giris-yap` — Giriş sayfası (`GuestRoute`: giriş yapmışsa yönlendirilir)
+- `/p/:token` — Public ürün sayfası (QR’dan yönlendirme)
+- `/qr/:token` — Public ürün sayfası (alternatif URL)
+
+### Korumalı (ProtectedRoute + AdminShell)
+
+- `/` → `/genel` (replace)
+- `/genel` — Dashboard
+- `/istatistikler` — İstatistikler
+- `/urunler` — Ürün listesi
+- `/yeni-urun` — Yeni ürün formu
+- `/urun-duzenle/:slugAndId` — Ürün düzenleme (slug + id)
+- `/ziyaret-gecmisi` — Ziyaret geçmişi listesi
+- `/cop-kutusu` — Çöp kutusu (silinmiş ürünler)
+- `/ayarlar` — Site ayarları
+- `*` — 404 (NotFound)
+
+Tüm korumalı sayfalar `AdminShell` içinde render edilir; layout tek noktadan yönetilir.
+
+---
+
+## URL ve isimlendirme
+
+- URL’ler Türkçe ve kısadır: `/genel`, `/istatistikler`, `/urunler`, `/yeni-urun`, `/ziyaret-gecmisi`, `/cop-kutusu`, `/ayarlar`.
+- Sidebar etiketleri aynı dil ve tonla uyumludur.
+- Admin paneli olduğu için SEO kritik değildir; Türkçe URL kullanımı bilinçli tercihtir.

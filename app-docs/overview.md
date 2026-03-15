@@ -1,32 +1,27 @@
-# Proje Dokümantasyonu Genel Bakış (Akcan Grup QR Yönetim Paneli)
+# Proje Dokümantasyonu – Genel Bakış (Akcan Grup QR Yönetim Paneli)
 
-Bu klasör, projede birlikte yaptığımız UI/UX ve front-end geliştirmelerini detaylı şekilde özetlemek için oluşturuldu. Her `.md` dosyası belirli bir konuya odaklanıyor; böylece hem kendin hem de ileride projeye katılacak başka geliştiriciler, neyin neden ve nasıl yapıldığını kolayca takip edebilir.
+Bu klasör, projedeki UI/UX ve teknik kararları özetleyen dokümanları içerir. Her `.md` dosyası belirli bir konuya odaklanır; hem sen hem de ileride projeye katılacak geliştiriciler neyin neden ve nasıl yapıldığını takip edebilir.
 
-## İçerik Başlıkları
+---
 
-- `layout-and-navigation.md`  
-  Genel layout, sidebar yapısı, sayfa ismi ve URL mimarisi.
+## İçerik listesi
 
-- `page-header-and-actions.md`  
-  Tüm sayfalarda kullanılan ortak header bileşeni (`PageHeader`) ve global aksiyon butonları.
+| Dosya | Konu |
+|-------|------|
+| `layout-and-navigation.md` | Genel layout, sidebar, sayfa isimleri ve URL yapısı. Giriş, korumalı ve public route’lar. |
+| `page-header-and-actions.md` | Ortak `PageHeader` bileşeni ve global aksiyon butonları. |
+| `new-product-form.md` | Yeni Ürün formu: alanlar, alt görseller, PDF/YouTube önizleme. |
+| `validation-and-feedback.md` | react-hook-form + zod validasyonu, toast ve hata gösterimi. |
+| `modals-and-scrollbar.md` | Modallar, dialog animasyonları, global scrollbar. |
+| `qr-flow-and-analytics.md` | QR üretimi, `qr_token` mimarisi, ürün detay sayfası, ziyaret kayıtları ve istatistikler. |
+| `product-public-and-admin-tweaks.md` | Public ürün sayfası overlay, admin tablolarında arama / pagination / “bulunamadı” UX. |
+| `site-settings-and-dashboard-metrics.md` | Site QR ayarı (backend + frontend), Dashboard tarama metrikleri (günlük / haftalık / aylık). |
+| `soft-delete-trash-products.md` | Ürün soft-delete, 30 günlük çöp kutusu, geri getir, purge (kalıcı silme) ve zamanlanmış görev. |
 
-- `new-product-form.md`  
-  Yeni Ürün formunun tasarımı, alanları, dinamik alt görseller, PDF ve YouTube önizleme özellikleri.
+---
 
-- `validation-and-feedback.md`  
-  `react-hook-form + zod` ile validasyon, toast mesajlar ve hata gösterim stratejisi.
+## Teknik özet
 
-- `modals-and-scrollbar.md`  
-  YouTube önizleme modali, dialog animasyonları ve global scrollbar tasarımı.
-
-- `qr-flow-and-analytics.md`  
-  QR üretimi ve `qr_token` mimarisi, ürün detay sayfası, ziyaret kayıtları (`visits` tablosu) ve dashboard/ürünler sekmesindeki istatistikler.
-
-- `product-public-and-admin-tweaks.md`  
-  Public ürün detay sayfası açılış overlay’i, dinamik başlık, admin ürünler ve ziyaret geçmişi tablolarında arama/pagination/bulunamadı UX iyileştirmeleri.
-
-- `site-settings-and-dashboard-metrics.md`  
-  Site QR okunabilirlik ayarı için backend/frontend altyapısı ve Dashboard’daki günlük/haftalık/aylık/toplam tarama kartları.
-
-Her dosya, hem teknik olarak hangi bileşenlerin/araçların kullanıldığını, hem de tasarım kararlarının arkasındaki mantığı anlatır.
-
+- **Auth:** Panel rotaları `ProtectedRoute` ile korunur; API’de Laravel Sanctum (`auth:sanctum`). Giriş sayfası `/giris-yap`, public ürün sayfaları `/p/:token` ve `/qr/:token` auth gerektirmez.
+- **CRUD ve yönetim:** Ürün ekleme, silme, güncelleme, çöp kutusu, ayar güncelleme gibi tüm yönetim endpoint’leri token ile korunur.
+- Dokümanlarda geçen bileşen yolları (`src/...`) frontend’e, migration/controller yolları backend’e aittir.

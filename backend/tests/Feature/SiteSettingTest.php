@@ -11,7 +11,7 @@ class SiteSettingTest extends TestCase
     use RefreshDatabase;
 
     /* ------------------------------------------------------------------ */
-    /*  SHOW (get settings)                                                */
+    /*  SHOW (get settings) — public                                        */
     /* ------------------------------------------------------------------ */
 
     public function test_can_get_site_settings(): void
@@ -37,14 +37,20 @@ class SiteSettingTest extends TestCase
     }
 
     /* ------------------------------------------------------------------ */
-    /*  UPDATE (put settings)                                              */
+    /*  UPDATE (put settings) — requires auth                               */
     /* ------------------------------------------------------------------ */
+
+    public function test_update_requires_authentication(): void
+    {
+        $response = $this->putJson('/api/site-settings', ['qr_enabled' => false]);
+        $response->assertUnauthorized();
+    }
 
     public function test_can_disable_qr(): void
     {
         SiteSetting::create(['qr_enabled' => true]);
 
-        $response = $this->putJson('/api/site-settings', [
+        $response = $this->actingAsApiUser()->putJson('/api/site-settings', [
             'qr_enabled' => false,
         ]);
 
@@ -58,7 +64,7 @@ class SiteSettingTest extends TestCase
     {
         SiteSetting::create(['qr_enabled' => false]);
 
-        $response = $this->putJson('/api/site-settings', [
+        $response = $this->actingAsApiUser()->putJson('/api/site-settings', [
             'qr_enabled' => true,
         ]);
 
@@ -70,7 +76,7 @@ class SiteSettingTest extends TestCase
     {
         $this->assertDatabaseCount('site_settings', 0);
 
-        $response = $this->putJson('/api/site-settings', [
+        $response = $this->actingAsApiUser()->putJson('/api/site-settings', [
             'qr_enabled' => false,
         ]);
 
@@ -81,7 +87,7 @@ class SiteSettingTest extends TestCase
 
     public function test_update_requires_qr_enabled(): void
     {
-        $response = $this->putJson('/api/site-settings', []);
+        $response = $this->actingAsApiUser()->putJson('/api/site-settings', []);
 
         $response->assertUnprocessable()
             ->assertJsonValidationErrors('qr_enabled');
@@ -89,7 +95,7 @@ class SiteSettingTest extends TestCase
 
     public function test_update_rejects_non_boolean_qr_enabled(): void
     {
-        $response = $this->putJson('/api/site-settings', [
+        $response = $this->actingAsApiUser()->putJson('/api/site-settings', [
             'qr_enabled' => 'yes',
         ]);
 

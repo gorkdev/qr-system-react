@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'title',
@@ -29,5 +31,15 @@ class Product extends Model
     public function visits()
     {
         return $this->hasMany(Visit::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::forceDeleting(function (Product $product): void {
+            $folder = $product->cover_image_path ? dirname($product->cover_image_path) : null;
+            if ($folder) {
+                \Illuminate\Support\Facades\Storage::disk('public')->deleteDirectory($folder);
+            }
+        });
     }
 }

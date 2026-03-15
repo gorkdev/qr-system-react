@@ -12,6 +12,7 @@ import EditProduct from '@/pages/EditProduct'
 import Settings from '@/pages/Settings'
 import ProductPublic from '@/pages/ProductPublic'
 import Visits from '@/pages/Visits'
+import Trash from '@/pages/Trash'
 import NotFound from '@/pages/NotFound'
 import Login from '@/pages/Login'
 
@@ -43,6 +44,7 @@ const App = () => {
                     <Route path='/yeni-urun' element={<NewProduct />} />
                     <Route path='/urun-duzenle/:slugAndId' element={<EditProduct />} />
                     <Route path='/ziyaret-gecmisi' element={<Visits />} />
+                    <Route path='/cop-kutusu' element={<Trash />} />
                     <Route path='/ayarlar' element={<Settings />} />
                     <Route path='*' element={<NotFound />} />
                   </Routes>

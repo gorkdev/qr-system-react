@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Carbon\CarbonInterface;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -148,11 +149,12 @@ class ProductController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified resource (admin: includes trashed).
      */
     public function show(string $id)
     {
-        return Product::findOrFail($id);
+        $product = Product::withTrashed()->findOrFail($id);
+        return response()->json($product);
     }
 
     /**
@@ -160,7 +162,12 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $product = Product::findOrFail($id);
+        $product = Product::withTrashed()->findOrFail($id);
+        if ($product->trashed()) {
+            return response()->json([
+                'message' => 'Ürün çöp kutusunda. Önce geri getirmelisiniz.',
+            ], 422);
+        }
 
         $validated = $request->validate([
             'title'       => ['required', 'string', 'max:255'],
@@ -244,11 +251,74 @@ class ProductController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Soft delete: move product to trash (30-day recovery period).
      */
     public function destroy(string $id)
     {
-        //
+        $product = Product::findOrFail($id);
+        $product->delete();
+
+        return response()->json([
+            'message' => 'Ürün çöp kutusuna taşındı. 30 gün içinde geri getirebilirsiniz.',
+        ]);
+    }
+
+    /**
+     * Restore a trashed product.
+     */
+    public function restore(string $id)
+    {
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        return response()->json([
+            'message' => 'Ürün geri getirildi.',
+            'data'    => $product->fresh(),
+        ]);
+    }
+
+    /**
+     * List trashed products (paginated).
+     */
+    public function trashed(Request $request)
+    {
+        $query = Product::onlyTrashed()->withCount('visits')->orderByDesc('deleted_at');
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = min((int) ($request->query('per_page', 10)), 100);
+
+        return response()->json($query->paginate($perPage));
+    }
+
+    /**
+     * Purge products that have been in trash for more than 30 days (permanent delete + storage cleanup).
+     * Safe to call on every dashboard/trash page load. Only selects id + cover_image_path for speed.
+     */
+    public function purgeTrashed()
+    {
+        $cutoff = now()->subDays(30);
+        $products = Product::onlyTrashed()
+            ->where('deleted_at', '<', $cutoff)
+            ->get(['id', 'cover_image_path']);
+        $count = 0;
+        foreach ($products as $product) {
+            $folder = $product->cover_image_path ? dirname($product->cover_image_path) : null;
+            if ($folder) {
+                Storage::disk('public')->deleteDirectory($folder);
+            }
+            Product::withTrashed()->where('id', $product->id)->forceDelete();
+            $count++;
+        }
+        return response()->json([
+            'message' => $count > 0 ? "{$count} ürün kalıcı olarak silindi." : 'Silinecek ürün yok.',
+            'purged_count' => $count,
+        ]);
     }
 
     /**

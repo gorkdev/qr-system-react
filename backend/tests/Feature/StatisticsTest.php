@@ -19,10 +19,10 @@ class StatisticsTest extends TestCase
     {
         Product::factory()->count(7)->create();
 
-        $response = $this->getJson('/api/products');
+        $response = $this->actingAsApiUser()->getJson('/api/products?all=1');
 
-        $response->assertOk()
-            ->assertJsonCount(7);
+        $response->assertOk();
+        $this->assertCount(7, $response->json());
     }
 
     public function test_products_include_active_and_inactive_in_count(): void
@@ -30,10 +30,10 @@ class StatisticsTest extends TestCase
         Product::factory()->count(3)->create(['is_active' => true]);
         Product::factory()->count(2)->create(['is_active' => false]);
 
-        $response = $this->getJson('/api/products');
+        $response = $this->actingAsApiUser()->getJson('/api/products?all=1');
 
-        $response->assertOk()
-            ->assertJsonCount(5);
+        $response->assertOk();
+        $this->assertCount(5, $response->json());
     }
 
     /* ------------------------------------------------------------------ */
@@ -45,10 +45,10 @@ class StatisticsTest extends TestCase
         $product = Product::factory()->create();
         Visit::factory()->count(12)->create(['product_id' => $product->id]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
 
-        $response->assertOk()
-            ->assertJsonCount(12);
+        $response->assertOk();
+        $this->assertCount(12, $response->json());
     }
 
     /* ------------------------------------------------------------------ */
@@ -71,7 +71,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now()->subDay(),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $todayCount = $visits->filter(function ($v) {
@@ -95,7 +95,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $yesterdayCount = $visits->filter(function ($v) {
@@ -125,7 +125,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now()->subDays(10),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $last7 = $visits->filter(function ($v) {
@@ -151,7 +151,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now()->subDays(10),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $startLast7 = now()->subDays(7);
@@ -187,7 +187,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now()->subDays(45),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $last30 = $visits->filter(fn ($v) =>
@@ -213,7 +213,7 @@ class StatisticsTest extends TestCase
             'visited_at' => now()->subDays(45),
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($response->json());
 
         $startLast30 = now()->subDays(30);
@@ -243,7 +243,7 @@ class StatisticsTest extends TestCase
         Visit::factory()->count(3)->create(['product_id' => $product2->id]);
         // product3 has 0 visits
 
-        $response = $this->getJson('/api/products');
+        $response = $this->actingAsApiUser()->getJson('/api/products?all=1');
         $products = collect($response->json());
 
         $this->assertEquals(10, $products->firstWhere('id', $product1->id)['visits_count']);
@@ -255,7 +255,7 @@ class StatisticsTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->getJson('/api/products');
+        $response = $this->actingAsApiUser()->getJson('/api/products?all=1');
 
         $this->assertEquals(0, $response->json('0.visits_count'));
     }
@@ -272,7 +272,7 @@ class StatisticsTest extends TestCase
             'device_type' => 'mobile',
         ]);
 
-        $response = $this->getJson('/api/visits');
+        $response = $this->actingAsApiUser()->getJson('/api/visits?all=1');
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -292,7 +292,7 @@ class StatisticsTest extends TestCase
     {
         Product::factory()->create();
 
-        $response = $this->getJson('/api/products');
+        $response = $this->actingAsApiUser()->getJson('/api/products?all=1');
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -325,13 +325,13 @@ class StatisticsTest extends TestCase
         Visit::factory()->count(5)->create(['product_id' => $p2->id, 'visited_at' => now()->subDays(40)]);
 
         // Ürün bazlı visits_count
-        $productsRes = $this->getJson('/api/products');
+        $productsRes = $this->actingAsApiUser()->getJson('/api/products?all=1');
         $products = collect($productsRes->json());
         $this->assertEquals(6, $products->firstWhere('id', $p1->id)['visits_count']);
         $this->assertEquals(6, $products->firstWhere('id', $p2->id)['visits_count']);
 
         // Toplam ziyaret
-        $visitsRes = $this->getJson('/api/visits');
+        $visitsRes = $this->actingAsApiUser()->getJson('/api/visits?all=1');
         $visits = collect($visitsRes->json());
         $this->assertCount(12, $visits);
 

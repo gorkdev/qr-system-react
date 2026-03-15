@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ChevronDown, Plus, Trash2, PlayCircle } from "lucide-react";
+import { ChevronDown, Plus, Trash2, PlayCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import PageHeader from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 
 const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
@@ -104,6 +105,7 @@ const editProductSchema = z
   });
 
 const EditProduct = () => {
+  const navigate = useNavigate();
   const { slugAndId } = useParams();
   const id = slugAndId?.split("-").pop();
   const [product, setProduct] = useState(null);
@@ -121,6 +123,9 @@ const EditProduct = () => {
   const [imageBytesTotal, setImageBytesTotal] = useState(0);
   const [initialAltSlotCount, setInitialAltSlotCount] = useState(2);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -198,7 +203,10 @@ const EditProduct = () => {
   const hasExistingCover = !!product?.cover_image_path;
 
   const handleAddAltImage = () => {
-    setAltImages((prev) => [...prev, { id: Math.max(...prev.map((i) => i.id), 0) + 1 }]);
+    setAltImages((prev) => [
+      ...prev,
+      { id: Math.max(...prev.map((i) => i.id), 0) + 1 },
+    ]);
   };
 
   const handleRemoveAltImage = (targetId) => {
@@ -226,7 +234,13 @@ const EditProduct = () => {
       const newTotal = imageBytesTotal - prevCoverSize + file.size;
 
       if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
-        setCoverName(coverFile ? coverFile.name : hasExistingCover ? "Mevcut kapak görseli" : "");
+        setCoverName(
+          coverFile
+            ? coverFile.name
+            : hasExistingCover
+              ? "Mevcut kapak görseli"
+              : "",
+        );
         setCoverFile(coverFile || null);
         setCoverError("Toplam görsel boyutu en fazla 15MB olabilir.");
         if (e?.target) e.target.value = "";
@@ -260,8 +274,7 @@ const EditProduct = () => {
     if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
       if (e?.target) e.target.value = "";
       toast("Toplam görsel boyutu çok büyük.", {
-        description:
-          "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+        description: "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
       });
       return;
     }
@@ -407,6 +420,71 @@ const EditProduct = () => {
     onSubmit(getValues());
   };
 
+  const handleDelete = async () => {
+    if (isDeleting || !id) return;
+    try {
+      setIsDeleting(true);
+      const res = await apiFetch(`/api/products/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast("Ürün silinemedi.", {
+          description: data?.message || "Lütfen daha sonra tekrar deneyin.",
+        });
+        return;
+      }
+      setShowDeleteConfirm(false);
+      toast("Ürün çöp kutusuna taşındı.", {
+        description: "30 gün içinde geri getirebilirsiniz.",
+      });
+      navigate("/urunler");
+    } catch (err) {
+      console.error("Ürün silinirken hata oluştu", err);
+      toast("Bir hata oluştu.", {
+        description: "Lütfen daha sonra tekrar deneyin.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (isRestoring || !id) return;
+    try {
+      setIsRestoring(true);
+      const res = await apiFetch(`/api/products/${id}/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast("Ürün geri getirilemedi.", {
+          description: result?.message || "Lütfen daha sonra tekrar deneyin.",
+        });
+        return;
+      }
+      toast("Ürün geri getirildi.", {
+        description: "Artık ürünü düzenleyebilirsiniz.",
+      });
+      const updated = result?.data ?? result;
+      if (updated) {
+        setProduct({ ...updated, deleted_at: null });
+      } else {
+        const refetch = await apiFetch(`/api/products/${id}`);
+        if (refetch.ok) {
+          const p = await refetch.json();
+          setProduct(p);
+        }
+      }
+    } catch (err) {
+      console.error("Ürün geri getirilirken hata oluştu", err);
+      toast("Bir hata oluştu.", {
+        description: "Lütfen daha sonra tekrar deneyin.",
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const hasFileChanges =
     !!coverFile || !!pdfFile || Object.keys(altFiles).length > 0;
   const hasAltStructureChanges = altImages.length !== initialAltSlotCount;
@@ -416,9 +494,58 @@ const EditProduct = () => {
     return (
       <div className="space-y-6">
         <PageHeader title="Ürünü düzenle" description="" />
-        <p className="text-sm text-muted-foreground">
-          Ürün bilgileri yükleniyor...
-        </p>
+
+        <div className="w-full space-y-6 pt-3 md:w-1/2">
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-24 w-full rounded-md" />
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-32 w-full rounded-md" />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-8 rounded" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-24 w-full rounded-md" />
+                <Skeleton className="h-24 w-full rounded-md" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-24 w-full rounded-md" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Skeleton className="h-10 w-36" />
+            <Skeleton className="h-10 w-44" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -430,6 +557,58 @@ const EditProduct = () => {
         <p className="text-sm text-destructive">
           {error || "Ürün bulunamadı veya silinmiş olabilir."}
         </p>
+      </div>
+    );
+  }
+
+  const isTrashed = !!product.deleted_at;
+  const deletedAt = product.deleted_at ? new Date(product.deleted_at) : null;
+  const daysLeft = deletedAt
+    ? Math.max(
+        0,
+        30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000),
+      )
+    : 0;
+
+  if (isTrashed) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Ürünü düzenle"
+          description={`${product.title} — Bu ürün çöp kutusunda.`}
+        />
+        <div className="w-full max-w-xl rounded-xl border border-amber-500/40 bg-amber-500/5 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Bu ürün çöp kutusunda
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {daysLeft > 0
+                  ? `${daysLeft} gün içinde geri getirebilirsiniz. Bu süreden sonra kalıcı olarak silinecektir.`
+                  : "Bu ürün yakında kalıcı olarak silinecektir."}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                size="lg"
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                {isRestoring ? "Geri getiriliyor..." : "Geri getir"}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/cop-kutusu")}
+              >
+                Çöp kutusuna git
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -503,10 +682,7 @@ const EditProduct = () => {
                       <p className="font-medium text-foreground">
                         Seçilen dosya
                       </p>
-                      <p
-                        className="truncate text-[11px]"
-                        title={coverName}
-                      >
+                      <p className="truncate text-[11px]" title={coverName}>
                         {coverName}
                       </p>
                     </>
@@ -578,10 +754,7 @@ const EditProduct = () => {
                     {altNames[image.id] ? (
                       <div className="max-w-full px-3 text-center text-[11px] text-foreground">
                         <p className="font-medium">Seçilen dosya</p>
-                        <p
-                          className="mt-1 truncate"
-                          title={altNames[image.id]}
-                        >
+                        <p className="mt-1 truncate" title={altNames[image.id]}>
                           {altNames[image.id]}
                         </p>
                       </div>
@@ -758,60 +931,105 @@ const EditProduct = () => {
           </div>
         </div>
 
-        <div className="mx-auto flex max-w-5xl justify-end gap-2">
-          <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-            <DialogTrigger asChild>
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                className="shadow-none"
-                disabled={!hasChanges}
-              >
-                Değişiklikleri geri al
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Formu temizlemek istiyor musun?</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                Tüm alanlar mevcut ürün verilerine döndürülecek. Seçtiğin yeni
-                kapak, alt görseller ve PDF kaldırılacak.
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowResetConfirm(false)}
-                >
-                  Vazgeç
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    handleReset();
-                    setShowResetConfirm(false);
-                  }}
-                >
-                  Evet, temizle
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             type="button"
             size="lg"
-            className="shadow-md"
-            disabled={isSubmitting}
-            onClick={handleValidateAndSubmit}
+            variant="destructive"
+            className="shadow-none"
+            onClick={() => setShowDeleteConfirm(true)}
           >
-            {isSubmitting ? "Kaydediliyor..." : "Değişiklikleri kaydet"}
+            <Trash2 className="mr-2 h-4 w-4" />
+            Ürünü sil
           </Button>
+          <div className="flex justify-end gap-2">
+            <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="shadow-none"
+                  disabled={!hasChanges}
+                >
+                  Değişiklikleri geri al
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    Değişiklikleri geri almak istiyor musunuz?
+                  </DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Tüm alanlar mevcut ürün verilerine döndürülecek.
+                </p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowResetConfirm(false)}
+                  >
+                    Vazgeç
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      handleReset();
+                      setShowResetConfirm(false);
+                    }}
+                  >
+                    Evet, geri al
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              type="button"
+              size="lg"
+              className="shadow-md"
+              disabled={isSubmitting}
+              onClick={handleValidateAndSubmit}
+            >
+              {isSubmitting ? "Kaydediliyor..." : "Değişiklikleri kaydet"}
+            </Button>
+          </div>
         </div>
+
+        <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Ürünü silmek istiyor musunuz?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              <strong>{product?.title}</strong> ürünü silinecek. Ürün 30 gün
+              boyunca silinmişler arasında tutulacak ve bu süre içinde isteğe
+              bağlı olarak geri getirilebilecektir.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={isDeleting}
+                onClick={() => handleDelete()}
+              >
+                {isDeleting ? "Siliniyor..." : "Evet, sil"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </form>
     </div>
   );
