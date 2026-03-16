@@ -149,8 +149,6 @@ const Visits = () => {
       <PageHeader
         title="Ziyaret Geçmişi"
         description="Ürünlerinize gelen ziyaretlerin cihaz, tarayıcı ve zaman bilgilerini buradan takip edebilirsiniz."
-        primaryText=""
-        secondaryText=""
       />
 
       <div className="rounded-xl">

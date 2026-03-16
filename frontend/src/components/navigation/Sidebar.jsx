@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   LayoutDashboard,
@@ -8,11 +8,14 @@ import {
   Settings,
   Trash2,
   Clock3,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 const navItems = [
   { label: "Genel", to: "/genel", icon: LayoutDashboard },
@@ -25,7 +28,7 @@ const navItems = [
   { label: "Ayarlar", to: "/ayarlar", icon: Settings },
 ];
 
-export const Sidebar = () => {
+const SidebarContent = ({ onNavigate }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -35,7 +38,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden h-full w-64 flex-col border-r bg-background/90 px-4 pb-4 pt-4 md:pt-6 md:flex lg:w-72">
+    <>
       <div className="flex items-center px-2">
         <span className="text-xl w-full font-semibold tracking-wide text-foreground brand-reflection">
           Akcan <span className="text-xl text-muted-foreground">Grup</span>
@@ -48,6 +51,7 @@ export const Sidebar = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 cn(
                   "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors",
@@ -97,6 +101,88 @@ export const Sidebar = () => {
           Çıkış yap
         </Button>
       </div>
-    </aside>
+
+      <a
+        href="https://clicktopeak.com"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+      >
+        <span>by</span>
+        <span className="font-semibold">Click to Peak</span>
+      </a>
+    </>
   );
 };
+
+export const Sidebar = ({ mobileOpen, onMobileClose }) => {
+  const location = useLocation();
+
+  // Route değişince mobil sidebar'ı kapat
+  useEffect(() => {
+    onMobileClose?.();
+  }, [location.pathname]);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden h-full w-64 flex-col border-r bg-background/90 px-4 pb-4 pt-6 md:flex lg:w-72">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobil overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/50 md:hidden"
+              onClick={onMobileClose}
+            />
+
+            {/* Mobil sidebar */}
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 400, damping: 40 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background px-4 pb-4 pt-4 md:hidden"
+            >
+              <div className="mb-2 flex items-center justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onMobileClose}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <SidebarContent onNavigate={onMobileClose} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+export const MobileHeader = ({ onMenuClick }) => (
+  <header className="flex items-center gap-3 border-b bg-background px-4 py-3 md:hidden">
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9"
+      onClick={onMenuClick}
+    >
+      <Menu className="h-5 w-5" />
+    </Button>
+    <span className="text-lg font-semibold tracking-wide text-foreground">
+      Akcan <span className="text-muted-foreground">Grup</span>
+    </span>
+  </header>
+);

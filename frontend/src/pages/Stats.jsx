@@ -230,15 +230,31 @@ const Stats = () => {
   const deviceColors = ["#0ea5e9", "#22c55e", "#a855f7"];
   const countryColors = ["#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899", "#10b981"];
 
+  const renderPieLabel = ({ name, value, percent, cx, cy, midAngle, outerRadius }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 20;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="#555"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={11}
+      >
+        {name} {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="İstatistikler"
         description="QR tarama ve ürün ekleme trendlerini detaylı grafiklerle inceleyin."
-        primaryText="Rapor oluştur"
-        secondaryText="Tarih aralığı"
-        onPrimaryClick={() => console.log("Rapor oluştur")}
-        onSecondaryClick={() => console.log("Tarih aralığı seç")}
       />
 
       <div className="flex flex-wrap items-end justify-between gap-3 text-xs">
@@ -351,72 +367,72 @@ const Stats = () => {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>TARAMA TRENDİ</CardTitle>
-            <CardDescription>
-              Gün bazında QR tarama sayıları.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-64">
-            {isLoading ? (
-              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                Grafik yükleniyor...
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyScans}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(value) => [`${value}`, "Tarama sayısı"]}
-                    labelFormatter={(label) => `Tarih: ${label}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="scans"
-                    stroke="#0ea5e9"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>TARAMA TRENDİ</CardTitle>
+              <CardDescription>
+                Gün bazında QR tarama sayıları.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  Grafik yükleniyor...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyScans}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip
+                      formatter={(value) => [`${value}`, "Tarama sayısı"]}
+                      labelFormatter={(label) => `Tarih: ${label}`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="scans"
+                      stroke="#0ea5e9"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>YENİ ÜRÜNLER</CardTitle>
-            <CardDescription>
-              Her gün eklenen yeni ürün sayıları.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-64">
-            {isLoading ? (
-              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                Grafik yükleniyor...
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyProducts}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(value) => [`${value}`, "Yeni ürün sayısı"]}
-                    labelFormatter={(label) => `Tarih: ${label}`}
-                  />
-                  <Bar dataKey="products" fill="#22c55e" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>YENİ ÜRÜNLER</CardTitle>
+              <CardDescription>
+                Her gün eklenen yeni ürün sayıları.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  Grafik yükleniyor...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyProducts}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip
+                      formatter={(value) => [`${value}`, "Yeni ürün sayısı"]}
+                      labelFormatter={(label) => `Tarih: ${label}`}
+                    />
+                    <Bar dataKey="products" fill="#22c55e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>CİHAZ DAĞILIMI</CardTitle>
@@ -442,7 +458,7 @@ const Stats = () => {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label
+                    label={renderPieLabel}
                   >
                     {deviceBreakdown.map((entry, index) => (
                       <Cell
@@ -490,7 +506,7 @@ const Stats = () => {
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label
+                      label={renderPieLabel}
                     >
                       {countryBreakdown.map((entry, index) => (
                         <Cell

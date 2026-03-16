@@ -101,7 +101,10 @@ const PdfPages = ({ pdfUrl }) => {
   }
 
   return (
-    <div ref={containerRef} className='flex flex-col gap-2'>
+    <div
+      ref={containerRef}
+      className='flex w-full max-w-full flex-col items-center gap-2 overflow-x-auto'
+    >
       {canvases.map((item, idx) => (
         <canvas
           key={idx}
@@ -111,7 +114,9 @@ const PdfPages = ({ pdfUrl }) => {
           style={{
             width: item.width,
             height: item.height,
+            maxWidth: '100%',
             display: 'block',
+            margin: '0 auto',
           }}
         />
       ))}

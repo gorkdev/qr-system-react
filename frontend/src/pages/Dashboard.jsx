@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { ArrowUpRight, BarChart3, QrCode, Users } from "lucide-react";
+import { BarChart3, CheckCircle2, QrCode, XCircle, ArrowRight, Activity, ShieldOff } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import PageHeader from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -25,14 +26,16 @@ const Dashboard = () => {
   const [products, setProducts] = useState([]);
   const [visits, setVisits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [qrEnabled, setQrEnabled] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        const [productsRes, visitsRes] = await Promise.all([
+        const [productsRes, visitsRes, settingsRes] = await Promise.all([
           apiFetch("/api/products?all=1"),
           apiFetch("/api/visits?all=1"),
+          apiFetch("/api/site-settings"),
         ]);
 
         if (!productsRes.ok || !visitsRes.ok) {
@@ -41,6 +44,11 @@ const Dashboard = () => {
 
         const productsData = await productsRes.json();
         const visitsData = await visitsRes.json();
+
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          setQrEnabled(!!(settingsData?.qr_enabled ?? true));
+        }
 
         setProducts(
           Array.isArray(productsData)
@@ -60,7 +68,7 @@ const Dashboard = () => {
         setIsLoading(false);
         // Sayfa gösterildikten sonra arka planda çöp kontrolü (kullanıcı beklemez)
         apiFetch("/api/products/purge-trashed", { method: "POST" }).catch(
-          () => {},
+          () => { },
         );
       }
     };
@@ -212,7 +220,7 @@ const Dashboard = () => {
   const scanCards = [
     {
       label: "BUGÜNKÜ TARAMA",
-      value: isLoading ? "—" : todayScans.toString(),
+      value: todayScans.toString(),
       trend: formatTrend(todayTrend),
       subtitle: "Düne göre",
       icon: QrCode,
@@ -220,7 +228,7 @@ const Dashboard = () => {
     },
     {
       label: "HAFTALIK TARAMA",
-      value: isLoading ? "—" : scansLast7.toString(),
+      value: scansLast7.toString(),
       trend: formatTrend(scansTrend7),
       subtitle: "Önceki 7 güne göre",
       icon: QrCode,
@@ -228,7 +236,7 @@ const Dashboard = () => {
     },
     {
       label: "AYLIK TARAMA",
-      value: isLoading ? "—" : scansLast30.toString(),
+      value: scansLast30.toString(),
       trend: formatTrend(scansTrend30),
       subtitle: "Önceki 30 güne göre",
       icon: QrCode,
@@ -236,7 +244,7 @@ const Dashboard = () => {
     },
     {
       label: "TOPLAM TARAMA",
-      value: isLoading ? "—" : totalScans.toString(),
+      value: totalScans.toString(),
       trend: null,
       subtitle: "Toplam tarama sayısı",
       icon: QrCode,
@@ -247,7 +255,7 @@ const Dashboard = () => {
   const productCards = [
     {
       label: "BUGÜN EKLENEN ÜRÜN",
-      value: isLoading ? "—" : productsToday.toString(),
+      value: productsToday.toString(),
       trend: formatTrend(productsTodayTrend),
       subtitle: "Düne göre",
       icon: BarChart3,
@@ -255,7 +263,7 @@ const Dashboard = () => {
     },
     {
       label: "HAFTALIK YENİ ÜRÜN",
-      value: isLoading ? "—" : productsLast7.toString(),
+      value: productsLast7.toString(),
       trend: formatTrend(products7Trend),
       subtitle: "Önceki 7 güne göre",
       icon: BarChart3,
@@ -263,7 +271,7 @@ const Dashboard = () => {
     },
     {
       label: "AYLIK YENİ ÜRÜN",
-      value: isLoading ? "—" : productsLast30.toString(),
+      value: productsLast30.toString(),
       trend: formatTrend(products30Trend),
       subtitle: "Önceki 30 güne göre",
       icon: BarChart3,
@@ -271,7 +279,7 @@ const Dashboard = () => {
     },
     {
       label: "TOPLAM ÜRÜN",
-      value: isLoading ? "—" : totalProducts.toString(),
+      value: totalProducts.toString(),
       trend: null,
       subtitle: "Genel toplam",
       icon: BarChart3,
@@ -283,17 +291,70 @@ const Dashboard = () => {
     <div className="space-y-6">
       <PageHeader
         title="Genel"
-        description="Sistem durumunu, QR performansını ve temel metrikleri buradan takip edebilirsin."
-        primaryText={
-          <span className="flex items-center gap-1.5">
-            Yeni QR oluştur
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </span>
-        }
-        secondaryText="Raporları dışa aktar"
-        onPrimaryClick={() => console.log("Yeni QR oluştur")}
-        onSecondaryClick={() => console.log("Raporları dışa aktar")}
+        description="Sistem durumunu, QR performansını ve temel metrikleri buradan takip edebilirsiniz."
       />
+
+      {qrEnabled === null ? (
+        <div className="rounded-xl border px-5 py-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-64" />
+            </div>
+          </div>
+        </div>
+      ) : qrEnabled ? (
+          <div className="relative overflow-hidden rounded-xl border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-teal-50/50">
+            <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-emerald-100/40" />
+            <div className="absolute right-6 bottom-0 -mb-6 h-16 w-16 rounded-full bg-teal-100/30" />
+            <div className="relative flex items-center gap-4 px-5 py-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <Activity className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-emerald-900">Sistem aktif</h3>
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-emerald-700/80">
+                  Tüm QR kodları çalışıyor, taramalar kaydediliyor ve ürün sayfaları erişilebilir durumda.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-xl border border-red-200/60 bg-gradient-to-r from-red-50 to-orange-50/50">
+            <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-red-100/40" />
+            <div className="absolute right-6 bottom-0 -mb-6 h-16 w-16 rounded-full bg-orange-100/30" />
+            <div className="relative flex items-center gap-4 px-5 py-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <ShieldOff className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-red-900">Sistem duraklatıldı</h3>
+                  <span className="inline-flex h-2 w-2 rounded-full bg-red-400" />
+                </div>
+                <p className="mt-0.5 text-xs text-red-700/80">
+                  QR okumaları devre dışı — kullanıcılar ürün sayfalarına erişemiyor ve taramalar kaydedilmiyor.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/ayarlar")}
+                className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-white hover:text-red-900"
+              >
+                Yeniden etkinleştir
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )
+      }
 
       {[scanCards, productCards].map((cards, sectionIdx) => (
         <section
@@ -315,26 +376,35 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-1">
-                <div className="text-2xl font-semibold tracking-tight">
-                  {card.value}
-                </div>
-                {typeof card.trend === "string" ? (
-                  <CardDescription
-                    className={
-                      "text-xs " +
-                      (parseInt(card.trend, 10) > 0
-                        ? "text-emerald-600"
-                        : parseInt(card.trend, 10) < 0
-                          ? "text-red-500"
-                          : "text-yellow-500")
-                    }
-                  >
-                    {card.trend} {card.subtitle}
-                  </CardDescription>
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-4 w-28" />
+                  </>
                 ) : (
-                  <CardDescription className="text-xs text-muted-foreground">
-                    {card.subtitle}
-                  </CardDescription>
+                  <>
+                    <div className="text-2xl font-semibold tracking-tight">
+                      {card.value}
+                    </div>
+                    {typeof card.trend === "string" ? (
+                      <CardDescription
+                        className={
+                          "text-xs " +
+                          (parseInt(card.trend, 10) > 0
+                            ? "text-emerald-600"
+                            : parseInt(card.trend, 10) < 0
+                              ? "text-red-500"
+                              : "text-yellow-500")
+                        }
+                      >
+                        {card.trend} {card.subtitle}
+                      </CardDescription>
+                    ) : (
+                      <CardDescription className="text-xs text-muted-foreground">
+                        {card.subtitle}
+                      </CardDescription>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

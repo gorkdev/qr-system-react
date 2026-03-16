@@ -105,7 +105,12 @@ class VisitController extends Controller
                 ? 'https://api.ipinfo.io/lite/me'
                 : "https://api.ipinfo.io/lite/{$ip}";
 
-            $response = Http::withToken('8b4dbe08f56a22')
+            $token = config('services.ipinfo.token');
+            if (!$token) {
+                return null;
+            }
+
+            $response = Http::withToken($token)
                 ->timeout(3)
                 ->get($endpoint);
 

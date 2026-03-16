@@ -256,17 +256,6 @@ const Products = () => {
       <PageHeader
         title="Ürünler"
         description="Sistemde kayıtlı tüm ürünleri, durumlarını ve QR kodlarını buradan yönetebilirsiniz."
-        primaryText="Yeni ürün"
-        secondaryText="Filtreleri sıfırla"
-        onPrimaryClick={() => navigate("/yeni-urun")}
-        onSecondaryClick={() => {
-          setSearch("");
-          setStatusFilter("all");
-          const d = new Date();
-          d.setDate(d.getDate() - 29);
-          setStartDate(format(d, "yyyy-MM-dd"));
-          setEndDate(format(new Date(), "yyyy-MM-dd"));
-        }}
       />
 
       <div className="rounded-xl">

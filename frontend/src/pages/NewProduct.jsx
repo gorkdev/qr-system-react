@@ -26,38 +26,10 @@ import {
 import PageHeader from "@/components/ui/page-header";
 import QRCodeStyling from "qr-code-styling";
 import { apiFetch } from "@/lib/api";
+import { getYoutubeEmbedUrl } from "@/lib/youtube";
 
 const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
-const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB
-
-const getYoutubeEmbedUrl = (url) => {
-  if (!url) return null;
-
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.replace("www.", "");
-
-    if (hostname === "youtu.be") {
-      const id = parsed.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-
-    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
-      const v = parsed.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-
-      const parts = parsed.pathname.split("/");
-      const embedIndex = parts.indexOf("embed");
-      if (embedIndex !== -1 && parts[embedIndex + 1]) {
-        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-};
+const MAX_PDF_BYTES = 50 * 1024 * 1024; // 50MB
 
 const containsEmoji = (value) => {
   if (!value) return false;
@@ -71,6 +43,17 @@ const stripHtml = (html) => {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
+};
+
+const truncateFileName = (name, max = 30) => {
+  if (!name) return "";
+  if (name.length <= max) return name;
+  const extIndex = name.lastIndexOf(".");
+  const hasExt = extIndex > 0 && extIndex < name.length - 1;
+  const ext = hasExt ? name.slice(extIndex) : "";
+  const base = hasExt ? name.slice(0, extIndex) : name;
+  const allowedBaseLength = Math.max(5, max - ext.length - 3);
+  return `${base.slice(0, allowedBaseLength)}...${ext}`;
 };
 
 const newProductSchema = z
@@ -154,7 +137,10 @@ const NewProduct = () => {
   const youtubeUrl = watch("youtube");
 
   const handleAddAltImage = () => {
-    setAltImages((prev) => [...prev, { id: prev.length + 1 }]);
+    setAltImages((prev) => [
+      ...prev,
+      { id: Math.max(...prev.map((i) => i.id), 0) + 1 },
+    ]);
   };
 
   const handleRemoveAltImage = (id) => {
@@ -199,7 +185,7 @@ const NewProduct = () => {
       setImageBytesTotal(newTotal);
       setHasCoverFile(true);
       setCoverError("");
-      setCoverName(file.name);
+      setCoverName(truncateFileName(file.name));
       setCoverFile(file);
     } else {
       const prevCoverSize = coverFile?.size || 0;
@@ -229,7 +215,7 @@ const NewProduct = () => {
     setImageBytesTotal(newTotal);
     setAltNames((prev) => ({
       ...prev,
-      [id]: file.name,
+      [id]: truncateFileName(file.name),
     }));
     setAltFiles((prev) => ({
       ...prev,
@@ -249,13 +235,13 @@ const NewProduct = () => {
       setPdfName("");
       setPdfFile(null);
       if (e?.target) e.target.value = "";
-      toast("Dosya boyutu çok büyük.", {
-        description: "PDF için maksimum 10MB seçebilirsiniz.",
+      toast("PDF çok büyük.", {
+        description: "PDF dosyası en fazla 50MB olabilir.",
       });
       return;
     }
 
-    setPdfName(file.name);
+    setPdfName(truncateFileName(file.name));
     setPdfFile(file);
   };
 
@@ -349,16 +335,24 @@ const NewProduct = () => {
         body: formData,
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         const message =
           result?.message || "Ürün kaydedilirken bir hata oluştu.";
+
+        let description;
+        if (result?.errors && typeof result.errors === "object") {
+          const pdfErrors = result.errors.pdf;
+          if (Array.isArray(pdfErrors) && pdfErrors.length > 0) {
+            description = "PDF dosyası en fazla 50MB olabilir.";
+          } else {
+            description = Object.values(result.errors).flat().join(" ");
+          }
+        }
+
         toast(message, {
-          description:
-            typeof result?.errors === "object"
-              ? Object.values(result.errors).flat().join(" ")
-              : undefined,
+          description,
         });
         return;
       }
@@ -399,11 +393,7 @@ const NewProduct = () => {
     <div className="space-y-6">
       <PageHeader
         title="Yeni Ürün"
-        description={"Bu sayfada yeni bir ürün oluşturabilirsiniz."}
-        primaryText={isSubmitting ? "Kaydediliyor..." : "Ürünü oluştur"}
-        secondaryText="Temizle"
-        onPrimaryClick={isSubmitting ? undefined : handleValidateAndSubmit}
-        onSecondaryClick={handleReset}
+        description="Bu sayfada yeni bir ürün oluşturabilirsiniz."
       />
 
       <form className="w-full space-y-6 pt-3 md:w-1/2">
@@ -413,7 +403,7 @@ const NewProduct = () => {
           </Label>
           <Input
             id="title"
-            placeholder="Örn. Akcan Group Özel QR Menü"
+            placeholder="Örn. Vita Temizlik Makinesi"
             className="bg-card"
             {...register("title")}
           />
@@ -454,7 +444,7 @@ const NewProduct = () => {
                     alt={coverName || "Kapak önizleme"}
                     className="max-h-20 max-w-full rounded object-contain"
                   />
-                  <p className="truncate text-[11px]" title={coverName}>
+                  <p className="truncate text-[11px] text-primary" title={coverName}>
                     {coverName}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
@@ -582,7 +572,7 @@ const NewProduct = () => {
                     {pdfName}
                   </p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Sadece PDF dosyaları, en fazla 10MB.
+                    Sadece PDF dosyaları, en fazla 50MB.
                   </p>
                 </div>
               ) : (
@@ -595,7 +585,7 @@ const NewProduct = () => {
                     <span className="font-medium text-primary">dosya seç</span>
                   </p>
                   <p className="text-[11px]">
-                    Sadece PDF dosyaları, en fazla 10MB.
+                    Sadece PDF dosyaları, en fazla 50MB.
                   </p>
                 </div>
               )}

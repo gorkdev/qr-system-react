@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ChevronDown, Plus, Trash2, PlayCircle, RotateCcw } from "lucide-react";
+import { ChevronDown, Plus, Trash2, PlayCircle, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import RichEditor from "@/components/ui/rich-editor";
@@ -27,38 +27,10 @@ import {
 import PageHeader from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
+import { getYoutubeEmbedUrl } from "@/lib/youtube";
 
 const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
-const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB
-
-const getYoutubeEmbedUrl = (url) => {
-  if (!url) return null;
-
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.replace("www.", "");
-
-    if (hostname === "youtu.be") {
-      const id = parsed.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-
-    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
-      const v = parsed.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-
-      const parts = parsed.pathname.split("/");
-      const embedIndex = parts.indexOf("embed");
-      if (embedIndex !== -1 && parts[embedIndex + 1]) {
-        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-};
+const MAX_PDF_BYTES = 50 * 1024 * 1024; // 50MB
 
 const containsEmoji = (value) => {
   if (!value) return false;
@@ -72,6 +44,17 @@ const stripHtml = (html) => {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
+};
+
+const truncateFileName = (name, max = 30) => {
+  if (!name) return "";
+  if (name.length <= max) return name;
+  const extIndex = name.lastIndexOf(".");
+  const hasExt = extIndex > 0 && extIndex < name.length - 1;
+  const ext = hasExt ? name.slice(extIndex) : "";
+  const base = hasExt ? name.slice(0, extIndex) : name;
+  const allowedBaseLength = Math.max(5, max - ext.length - 3);
+  return `${base.slice(0, allowedBaseLength)}...${ext}`;
 };
 
 const editProductSchema = z
@@ -142,6 +125,8 @@ const EditProduct = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [removedAltPaths, setRemovedAltPaths] = useState([]);
+  const [removePdf, setRemovePdf] = useState(false);
 
   const {
     register,
@@ -179,7 +164,7 @@ const EditProduct = () => {
 
         reset({
           title: data.title || "",
-        description: data.description || "",
+          description: data.description || "",
           youtube: data.youtube_url || "",
           is_active: data.is_active ? "1" : "0",
         });
@@ -225,9 +210,15 @@ const EditProduct = () => {
   };
 
   const handleRemoveAltImage = (targetId) => {
+    const image = altImages.find((img) => img.id === targetId);
     const fileToRemove = altFiles[targetId];
     if (fileToRemove?.size) {
       setImageBytesTotal((prev) => Math.max(0, prev - fileToRemove.size));
+    }
+    if (image?.existingPath) {
+      setRemovedAltPaths((prev) =>
+        prev.includes(image.existingPath) ? prev : [...prev, image.existingPath],
+      );
     }
     setAltImages((prev) => prev.filter((img) => img.id !== targetId));
     setAltNames((prev) => {
@@ -268,7 +259,7 @@ const EditProduct = () => {
 
       setImageBytesTotal(newTotal);
       setCoverError("");
-      setCoverName(file.name);
+      setCoverName(truncateFileName(file.name));
       setCoverFile(file);
     } else {
       const prevCoverSize = coverFile?.size || 0;
@@ -294,8 +285,19 @@ const EditProduct = () => {
       return;
     }
 
+    // Eğer bu slot daha önce mevcut bir görsel gösteriyorsa, onu storage + DB'den silinmek üzere işaretle
+    const image = altImages.find((img) => img.id === targetId);
+    if (image?.existingPath) {
+      setRemovedAltPaths((prev) =>
+        prev.includes(image.existingPath) ? prev : [...prev, image.existingPath],
+      );
+    }
+
     setImageBytesTotal(newTotal);
-    setAltNames((prev) => ({ ...prev, [targetId]: file.name }));
+    setAltNames((prev) => ({
+      ...prev,
+      [targetId]: truncateFileName(file.name),
+    }));
     setAltFiles((prev) => ({ ...prev, [targetId]: file }));
   };
 
@@ -310,13 +312,13 @@ const EditProduct = () => {
     if (file.size > MAX_PDF_BYTES) {
       setPdfFile(null);
       if (e?.target) e.target.value = "";
-      toast("Dosya boyutu çok büyük.", {
-        description: "PDF için maksimum 15MB seçebilirsiniz.",
+      toast("PDF çok büyük.", {
+        description: "PDF dosyası en fazla 50MB olabilir.",
       });
       return;
     }
 
-    setPdfName(file.name);
+    setPdfName(truncateFileName(file.name));
     setPdfFile(file);
   };
 
@@ -343,10 +345,12 @@ const EditProduct = () => {
     setPdfName(product.pdf_path ? "PDF Mevcut" : "");
     setCoverFile(null);
     setPdfFile(null);
+    setRemovePdf(false);
     setAltFiles({});
     setFileInputsKey((prev) => prev + 1);
     setImageBytesTotal(0);
     setRichEditorKey((prev) => prev + 1);
+    setRemovedAltPaths([]);
     toast("Form temizlendi.", {
       description: "Tüm alanlar ürün verilerine döndürüldü.",
     });
@@ -369,8 +373,13 @@ const EditProduct = () => {
       Object.values(altFiles).forEach((file) => {
         if (file) formData.append("alt_images[]", file);
       });
+      removedAltPaths.forEach((path) => {
+        if (path) formData.append("remove_alt_images[]", path);
+      });
       if (pdfFile) {
         formData.append("pdf", pdfFile);
+      } else if (removePdf) {
+        formData.append("remove_pdf", "1");
       }
 
       const res = await apiFetch(`/api/products/${id}`, {
@@ -381,16 +390,24 @@ const EditProduct = () => {
         body: formData,
       });
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         const message =
           result?.message || "Ürün güncellenirken bir hata oluştu.";
+
+        let description;
+        if (result?.errors && typeof result.errors === "object") {
+          const pdfErrors = result.errors.pdf;
+          if (Array.isArray(pdfErrors) && pdfErrors.length > 0) {
+            description = "PDF dosyası en fazla 50MB olabilir.";
+          } else {
+            description = Object.values(result.errors).flat().join(" ");
+          }
+        }
+
         toast(message, {
-          description:
-            typeof result?.errors === "object"
-              ? Object.values(result.errors).flat().join(" ")
-              : undefined,
+          description,
         });
         return;
       }
@@ -404,6 +421,7 @@ const EditProduct = () => {
         setCoverFile(null);
         setCoverName(updated.cover_image_path ? "Mevcut kapak görseli" : "");
         setPdfFile(null);
+        setRemovePdf(false);
         setPdfName(
           updated.pdf_path
             ? updated.pdf_path.split("/").pop() || "PDF Mevcut"
@@ -411,6 +429,21 @@ const EditProduct = () => {
         );
         setAltFiles({});
         setAltNames({});
+        setRemovedAltPaths([]);
+
+        // Backend'den dönen en güncel alt görselleri hemen UI'ya yansıt
+        const updatedAlts = Array.isArray(updated.alt_image_paths)
+          ? updated.alt_image_paths
+          : [];
+        const updatedSlots =
+          updatedAlts.length >= 1
+            ? updatedAlts.map((path, i) => ({ id: i + 1, existingPath: path }))
+            : [{ id: 1 }, { id: 2 }];
+        setAltImages(updatedSlots);
+        setInitialAltSlotCount(updatedSlots.length);
+
+        // Boyut sayacını sıfırla (yeni seçimler için yeniden hesaplanacak)
+        setImageBytesTotal(0);
       }
     } catch (err) {
       console.error("Ürün güncellenirken hata oluştu", err);
@@ -502,7 +535,7 @@ const EditProduct = () => {
   };
 
   const hasFileChanges =
-    !!coverFile || !!pdfFile || Object.keys(altFiles).length > 0;
+    !!coverFile || !!pdfFile || removePdf || Object.keys(altFiles).length > 0;
   const hasAltStructureChanges = altImages.length !== initialAltSlotCount;
   const hasChanges = isDirty || hasFileChanges || hasAltStructureChanges;
 
@@ -581,9 +614,9 @@ const EditProduct = () => {
   const deletedAt = product.deleted_at ? new Date(product.deleted_at) : null;
   const daysLeft = deletedAt
     ? Math.max(
-        0,
-        30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000),
-      )
+      0,
+      30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000),
+    )
     : 0;
 
   if (isTrashed) {
@@ -634,10 +667,6 @@ const EditProduct = () => {
       <PageHeader
         title="Ürünü düzenle"
         description={`${product.title} ürünü için bilgileri güncelleyebilirsiniz.`}
-        primaryText={isSubmitting ? "Kaydediliyor..." : "Değişiklikleri kaydet"}
-        secondaryText="Değişiklikleri geri al"
-        onPrimaryClick={isSubmitting ? undefined : handleValidateAndSubmit}
-        onSecondaryClick={handleReset}
       />
 
       <form className="w-full space-y-6 pt-3 md:w-1/2">
@@ -647,7 +676,7 @@ const EditProduct = () => {
           </Label>
           <Input
             id="title"
-            placeholder="Örn. Akcan Group Özel QR Menü"
+            placeholder="Örn. Vita Temizlik Makinesi"
             className="bg-card"
             {...register("title")}
           />
@@ -683,7 +712,18 @@ const EditProduct = () => {
             <div className="relative flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-muted-foreground/40 bg-card text-xs text-muted-foreground">
               {coverName ? (
                 <div className="flex max-w-full flex-col items-center justify-center gap-1 px-4 text-center text-xs">
-                  {product.cover_image_path && !coverFile ? (
+                  {coverFile ? (
+                    <>
+                      <img
+                        src={URL.createObjectURL(coverFile)}
+                        alt="Yeni kapak önizleme"
+                        className="max-h-20 max-w-full rounded object-contain"
+                      />
+                      <p className="font-medium text-foreground">
+                        Yeni kapak seçildi – değiştirmek için tekrar tıklayın
+                      </p>
+                    </>
+                  ) : product.cover_image_path ? (
                     <>
                       <img
                         src={getStorageUrl(product.cover_image_path)}
@@ -768,10 +808,14 @@ const EditProduct = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    {altNames[image.id] ? (
+                    {altNames[image.id] && altFiles[image.id] ? (
                       <div className="max-w-full px-3 text-center text-[11px] text-foreground">
-                        <p className="font-medium">Seçilen dosya</p>
-                        <p className="mt-1 truncate" title={altNames[image.id]}>
+                        <img
+                          src={URL.createObjectURL(altFiles[image.id])}
+                          alt={altNames[image.id]}
+                          className="mx-auto max-h-14 max-w-full rounded object-contain"
+                        />
+                        <p className="mt-0.5 truncate" title={altNames[image.id]}>
                           {altNames[image.id]}
                         </p>
                       </div>
@@ -817,19 +861,57 @@ const EditProduct = () => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="pdf">PDF dokümanı</Label>
-              {product?.pdf_path && !pdfFile && (
-                <a
-                  href={getStorageUrl(product.pdf_path)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-medium text-gray-500 underline hover:text-primary"
-                >
-                  PDF Görüntüle
-                </a>
-              )}
+              <div className="flex items-center gap-2">
+                {product?.pdf_path && !pdfFile && !removePdf && (
+                  <>
+                    <a
+                      href={getStorageUrl(product.pdf_path)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-gray-500 underline hover:text-primary"
+                    >
+                      PDF Görüntüle
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemovePdf(true);
+                        setPdfName("");
+                        setPdfFile(null);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-0.5 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      <X className="h-3 w-3" />
+                      PDF'i kaldır
+                    </button>
+                  </>
+                )}
+                {removePdf && !pdfFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemovePdf(false);
+                      const base = product?.pdf_path?.split("/").pop() || "PDF Mevcut";
+                      setPdfName(base);
+                    }}
+                    className="text-xs font-medium text-primary underline hover:text-primary/80"
+                  >
+                    Kaldırmayı geri al
+                  </button>
+                )}
+              </div>
             </div>
             <div className="relative flex h-24 cursor-pointer items-center justify-center rounded-md border border-dashed border-muted-foreground/40 bg-card text-xs text-muted-foreground">
-              {pdfName ? (
+              {removePdf && !pdfFile ? (
+                <div className="max-w-full px-4 text-center text-xs text-muted-foreground">
+                  <p className="font-medium text-destructive/80">
+                    PDF kaydedildiğinde kaldırılacak
+                  </p>
+                  <p className="mt-1 text-[11px]">
+                    Yeni bir PDF yükleyebilir veya kaldırmayı geri alabilirsiniz.
+                  </p>
+                </div>
+              ) : pdfName ? (
                 <div className="max-w-full px-4 text-center text-xs text-foreground">
                   <p className="font-medium">
                     {pdfFile ? "Seçilen dosya" : "PDF Mevcut"}
@@ -840,7 +922,7 @@ const EditProduct = () => {
                     </p>
                   )}
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Sadece PDF dosyaları, en fazla 15MB.
+                    Sadece PDF dosyaları, en fazla 50MB.
                   </p>
                 </div>
               ) : (
@@ -853,7 +935,7 @@ const EditProduct = () => {
                     <span className="font-medium text-primary">dosya seç</span>
                   </p>
                   <p className="text-[11px]">
-                    Sadece PDF dosyaları, en fazla 15MB.
+                    Sadece PDF dosyaları, en fazla 50MB.
                   </p>
                 </div>
               )}
@@ -863,7 +945,12 @@ const EditProduct = () => {
                 type="file"
                 accept="application/pdf"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                onChange={handlePdfChange}
+                onChange={(e) => {
+                  handlePdfChange(e);
+                  if (e.target.files?.[0]) {
+                    setRemovePdf(false);
+                  }
+                }}
               />
             </div>
           </div>

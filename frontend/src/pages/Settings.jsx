@@ -59,7 +59,7 @@ const Settings = () => {
       }
 
       const result = await res.json();
-      const next = !!result?.data?.qr_enabled ?? !!result?.qr_enabled;
+      const next = !!(result?.data?.qr_enabled ?? result?.qr_enabled);
       setInitialQrReadable(next);
       setQrReadable(next);
 
@@ -233,14 +233,6 @@ const Settings = () => {
       <PageHeader
         title="Ayarlar"
         description="Sistem davranışlarını ve site durumunu buradan yönetebilirsiniz."
-        primaryText={isSaving ? "Kaydediliyor..." : "Değişiklikleri kaydet"}
-        secondaryText="Varsayılana dön"
-        onPrimaryClick={
-          hasChanges && !isSaving && !isLoading ? handleSave : undefined
-        }
-        onSecondaryClick={
-          hasChanges && !isSaving && !isLoading ? handleReset : undefined
-        }
       />
 
       <Card>

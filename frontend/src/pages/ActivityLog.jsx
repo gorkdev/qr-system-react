@@ -86,9 +86,6 @@ const ActivityLog = () => {
       <PageHeader
         title="İşlem geçmişi"
         description="Panelde yapılan işlemlerin kaydını görüntüleyin."
-        primaryText="Filtreleri sıfırla"
-        secondaryText={null}
-        onPrimaryClick={handleClearFilters}
       />
 
       <div className="rounded-xl">

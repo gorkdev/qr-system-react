@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams } from "react-router-dom";
 import { PlayCircle, FileText, ZoomIn, ArrowUpRight } from "lucide-react";
-import PdfPages from "@/components/PdfPages";
 import {
   Dialog,
   DialogContent,
@@ -10,35 +9,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getYoutubeEmbedUrl } from "@/lib/youtube";
 
-const getYoutubeEmbedUrl = (url) => {
-  if (!url) return null;
-
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.replace("www.", "");
-
-    if (hostname === "youtu.be") {
-      const id = parsed.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-
-    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
-      const v = parsed.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-
-      const parts = parsed.pathname.split("/");
-      const embedIndex = parts.indexOf("embed");
-      if (embedIndex !== -1 && parts[embedIndex + 1]) {
-        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-};
+const PdfPages = lazy(() => import("@/components/PdfPages"));
 
 const ProductPublic = () => {
   const { token } = useParams();
@@ -51,6 +24,20 @@ const ProductPublic = () => {
   const [qrEnabled, setQrEnabled] = useState(true);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [closedLang, setClosedLang] = useState("tr");
+
+  // İlk 5 saniyede sayfanın kaymaması için gövde scroll'unu kilitle
+  useEffect(() => {
+    if (countdown <= 0) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [countdown]);
 
   useEffect(() => {
     if ((!qrEnabled && !settingsLoading) || productInactive) {
@@ -195,9 +182,8 @@ const ProductPublic = () => {
 
   return (
     <div
-      className={`relative h-dvh overflow-y-scroll bg-background px-4 py-6 text-foreground ${
-        countdown > 0 ? "pointer-events-none" : ""
-      }`}
+      className={`relative h-dvh bg-background px-4 py-6 text-foreground ${countdown > 0 ? "overflow-hidden pointer-events-none" : "overflow-y-scroll"
+        }`}
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
@@ -216,22 +202,20 @@ const ProductPublic = () => {
               <button
                 type="button"
                 onClick={() => setClosedLang("tr")}
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${
-                  closedLang === "tr"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "opacity-70 hover:opacity-100"
-                }`}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === "tr"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "opacity-70 hover:opacity-100"
+                  }`}
               >
                 <span>TR</span>
               </button>
               <button
                 type="button"
                 onClick={() => setClosedLang("en")}
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${
-                  closedLang === "en"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "opacity-70 hover:opacity-100"
-                }`}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition ${closedLang === "en"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "opacity-70 hover:opacity-100"
+                  }`}
               >
                 <span>EN</span>
               </button>
@@ -283,9 +267,8 @@ const ProductPublic = () => {
                     <DialogTrigger asChild>
                       <button
                         type="button"
-                        className={`group relative w-full overflow-hidden border-b bg-black/60 ${
-                          youtubeEmbed ? "mt-3" : ""
-                        }`}
+                        className={`group relative w-full overflow-hidden border-b bg-black/60 ${youtubeEmbed ? "mt-3" : ""
+                          }`}
                       >
                         {/* Arka plan katmanı - tüm alanı kaplar, düşük opacity */}
                         <div className="pointer-events-none absolute inset-0 opacity-35">
@@ -342,9 +325,7 @@ const ProductPublic = () => {
 
                   {altImages.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Ek görseller
-                      </p>
+
                       <div className="grid grid-cols-3 gap-2">
                         {altImages.map((path, index) => {
                           const url = getPublicUrl(path);
@@ -389,11 +370,8 @@ const ProductPublic = () => {
 
                   {pdfUrl && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span>Doküman</span>
-                        </div>
+                      <div className="flex items-center justify-end text-sm font-medium">
+
                         <a
                           href={pdfUrl}
                           target="_blank"
@@ -405,7 +383,15 @@ const ProductPublic = () => {
                         </a>
                       </div>
                       <div className="flex justify-center">
-                        <PdfPages pdfUrl={pdfUrl} />
+                        <Suspense
+                          fallback={
+                            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                              PDF yükleniyor...
+                            </div>
+                          }
+                        >
+                          <PdfPages pdfUrl={pdfUrl} />
+                        </Suspense>
                       </div>
                     </div>
                   )}
@@ -417,15 +403,15 @@ const ProductPublic = () => {
       )}
 
       {countdown > 0 && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-white transition-opacity">
+        <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center bg-white transition-opacity">
           <div className="pointer-events-auto flex flex-col items-center gap-5 text-center">
-            <span className="text-[11px] font-semibold tracking-[0.3em] text-neutral-900">
+            <span className="text-[14px] font-semibold tracking-[0.3em] text-neutral-900">
               AKCAN GROUP
             </span>
             <div className="flex flex-col items-center gap-3">
               <div className="relative h-2 w-56 overflow-hidden rounded-full bg-neutral-100">
                 <div
-                  className="absolute inset-0 rounded-full bg-neutral-900 origin-left transition-transform duration-[5000ms] ease-linear"
+                  className="absolute inset-0 rounded-full bg-neutral-900 origin-left transition-transform duration-5000 ease-linear"
                   style={{
                     transform: `scaleX(${progress})`,
                   }}

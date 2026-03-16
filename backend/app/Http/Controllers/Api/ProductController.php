@@ -78,10 +78,10 @@ class ProductController extends Controller
             'title'                => ['required', 'string', 'max:255'],
             'description'          => ['required', 'string'],
             'youtube_url'          => ['nullable', 'string', 'max:255'],
-            'qr_token'             => ['required', 'string', 'max:255'],
+            'qr_token'             => ['required', 'string', 'max:255', 'unique:products,qr_token'],
             'is_active'            => ['required', 'boolean'],
             'cover'                => ['required', 'file', 'image', 'max:5120'],   // 5MB
-            'pdf'                  => ['nullable', 'file', 'mimes:pdf', 'max:10240'], // 10MB
+            'pdf'                  => ['nullable', 'file', 'mimes:pdf', 'max:51200'], // 50MB
             'alt_images'           => ['nullable', 'array'],
             'alt_images.*'         => ['file', 'image', 'max:5120'],
             'qr'                   => ['nullable', 'file', 'image', 'max:5120'],
@@ -91,9 +91,16 @@ class ProductController extends Controller
 
         $folder = 'products/' . Str::slug($validated['title']) . '-' . Str::random(8);
 
-        $coverImage = $manager->read($request->file('cover')->getRealPath())
-            ->scaleDown(1600)
-            ->encodeByExtension('jpg', quality: 80);
+        try {
+            $coverImage = $manager->read($request->file('cover')->getRealPath())
+                ->scaleDown(1600)
+                ->encodeByExtension('jpg', quality: 80);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Kapak görseli işlenemedi.',
+                'errors'  => ['cover' => ['Görsel dosyası bozuk veya desteklenmeyen bir formatta.']],
+            ], 422);
+        }
 
         $coverPath = $folder . '/cover.jpg';
         Storage::disk('public')->put($coverPath, (string) $coverImage);
@@ -101,9 +108,16 @@ class ProductController extends Controller
         $altImagePaths = [];
         if ($request->hasFile('alt_images')) {
             foreach ($request->file('alt_images') as $index => $file) {
-                $image = $manager->read($file->getRealPath())
-                    ->scaleDown(1600)
-                    ->encodeByExtension('jpg', quality: 80);
+                try {
+                    $image = $manager->read($file->getRealPath())
+                        ->scaleDown(1600)
+                        ->encodeByExtension('jpg', quality: 80);
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'message' => 'Alt görsel işlenemedi.',
+                        'errors'  => ['alt_images.' . $index => ['Görsel dosyası bozuk veya desteklenmeyen bir formatta.']],
+                    ], 422);
+                }
 
                 $path = $folder . '/alt-' . ($index + 1) . '.jpg';
                 Storage::disk('public')->put($path, (string) $image);
@@ -187,14 +201,17 @@ class ProductController extends Controller
         }
 
         $validated = $request->validate([
-            'title'       => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'youtube_url' => ['nullable', 'string', 'max:255'],
-            'is_active'   => ['required', 'boolean'],
-            'cover'       => ['nullable', 'file', 'image', 'max:5120'],
-            'pdf'         => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-            'alt_images'  => ['nullable', 'array'],
-            'alt_images.*'=> ['file', 'image', 'max:5120'],
+            'title'               => ['required', 'string', 'max:255'],
+            'description'         => ['required', 'string'],
+            'youtube_url'         => ['nullable', 'string', 'max:255'],
+            'is_active'           => ['required', 'boolean'],
+            'cover'               => ['nullable', 'file', 'image', 'max:5120'],
+            'pdf'                 => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'alt_images'          => ['nullable', 'array'],
+            'alt_images.*'        => ['file', 'image', 'max:5120'],
+            'remove_alt_images'   => ['nullable', 'array'],
+            'remove_alt_images.*' => ['string'],
+            'remove_pdf'          => ['nullable', 'boolean'],
         ]);
 
         $manager = new ImageManager(new Driver());
@@ -206,41 +223,69 @@ class ProductController extends Controller
 
         $coverPath = $product->cover_image_path;
         if ($request->hasFile('cover')) {
+            try {
+                $coverImage = $manager->read($request->file('cover')->getRealPath())
+                    ->scaleDown(1600)
+                    ->encodeByExtension('jpg', quality: 80);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'message' => 'Kapak görseli işlenemedi.',
+                    'errors'  => ['cover' => ['Görsel dosyası bozuk veya desteklenmeyen bir formatta.']],
+                ], 422);
+            }
+
             if ($coverPath && Storage::disk('public')->exists($coverPath)) {
                 Storage::disk('public')->delete($coverPath);
             }
-
-            $coverImage = $manager->read($request->file('cover')->getRealPath())
-                ->scaleDown(1600)
-                ->encodeByExtension('jpg', quality: 80);
 
             $coverPath = $folder . '/cover.jpg';
             Storage::disk('public')->put($coverPath, (string) $coverImage);
         }
 
         $altImagePaths = $product->alt_image_paths ?? [];
-        if ($request->hasFile('alt_images')) {
-            // Eski alt görselleri sil
-            foreach ($altImagePaths as $oldPath) {
+
+        // İstemcinin sildiği alt görselleri kaldır
+        $removeAltImages = $request->input('remove_alt_images', []);
+        if (!empty($removeAltImages) && is_array($removeAltImages)) {
+            foreach ($removeAltImages as $oldPath) {
                 if ($oldPath && Storage::disk('public')->exists($oldPath)) {
                     Storage::disk('public')->delete($oldPath);
                 }
             }
 
-            $altImagePaths = [];
+            $altImagePaths = array_values(array_filter(
+                $altImagePaths,
+                static fn ($path) => !in_array($path, $removeAltImages, true)
+            ));
+        }
+        if ($request->hasFile('alt_images')) {
+            // Yeni eklenen alt görselleri mevcut listenin sonuna ekle
+            $currentCount = count($altImagePaths);
             foreach ($request->file('alt_images') as $index => $file) {
-                $image = $manager->read($file->getRealPath())
-                    ->scaleDown(1600)
-                    ->encodeByExtension('jpg', quality: 80);
+                try {
+                    $image = $manager->read($file->getRealPath())
+                        ->scaleDown(1600)
+                        ->encodeByExtension('jpg', quality: 80);
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'message' => 'Alt görsel işlenemedi.',
+                        'errors'  => ['alt_images.' . $index => ['Görsel dosyası bozuk veya desteklenmeyen bir formatta.']],
+                    ], 422);
+                }
 
-                $path = $folder . '/alt-' . ($index + 1) . '.jpg';
+                $path = $folder . '/alt-' . ($currentCount + $index + 1) . '.jpg';
                 Storage::disk('public')->put($path, (string) $image);
                 $altImagePaths[] = $path;
             }
         }
 
         $pdfPath = $product->pdf_path;
-        if ($request->hasFile('pdf')) {
+        if ($request->boolean('remove_pdf') && !$request->hasFile('pdf')) {
+            if ($pdfPath && Storage::disk('public')->exists($pdfPath)) {
+                Storage::disk('public')->delete($pdfPath);
+            }
+            $pdfPath = null;
+        } elseif ($request->hasFile('pdf')) {
             if ($pdfPath && Storage::disk('public')->exists($pdfPath)) {
                 Storage::disk('public')->delete($pdfPath);
             }
