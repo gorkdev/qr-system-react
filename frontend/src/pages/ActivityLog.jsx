@@ -161,8 +161,10 @@ const ActivityLog = () => {
                     <TableCell className="align-top text-xs">
                       {ACTION_LABELS[log.action] ?? log.action}
                     </TableCell>
-                    <TableCell className="align-top text-xs text-muted-foreground">
-                      {log.description || "-"}
+                    <TableCell className="align-top text-xs text-muted-foreground max-w-md">
+                      <span className="block truncate" title={log.description || "-"}>
+                        {log.description || "-"}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))

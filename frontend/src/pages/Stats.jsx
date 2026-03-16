@@ -203,8 +203,8 @@ const Stats = () => {
         raw === "mobile"
           ? "Mobil"
           : raw === "tablet"
-          ? "Tablet"
-          : "Masaüstü";
+            ? "Tablet"
+            : "Masaüstü";
       deviceMap.set(key, (deviceMap.get(key) || 0) + 1);
     });
 
@@ -305,134 +305,140 @@ const Stats = () => {
             <SelectContent className="max-h-60">
               <SelectItem value="all">Tüm ürünler</SelectItem>
               {products.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)} className="truncate">
-                  <span className="truncate">{p.title}</span>
+                <SelectItem
+                  key={p.id}
+                  value={String(p.id)}
+                  className="max-w-[220px] truncate"
+                >
+                  <span className="block max-w-[130px] truncate" title={p.title}>
+                    {p.title}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 min-w-[140px] justify-start text-[11px] font-normal bg-card"
-                >
-                  <CalendarIcon className="mr-1.5 h-3 w-3" />
-                  {startDate
-                    ? format(new Date(startDate), "dd MMM yyyy", { locale: tr })
-                    : "Tarih seç"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  locale={tr}
-                  classNames={compactCalendarClassNames}
-                  className="p-2 [&_[data-slot=button]]:text-xs"
-                  selected={startDate ? new Date(startDate) : undefined}
-                  onSelect={(day) =>
-                    setStartDate(day ? format(day, "yyyy-MM-dd") : startDate)
-                  }
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 min-w-[140px] justify-start text-[11px] font-normal bg-card"
-                >
-                  <CalendarIcon className="mr-1.5 h-3 w-3" />
-                  {endDate
-                    ? format(new Date(endDate), "dd MMM yyyy", { locale: tr })
-                    : "Tarih seç"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  locale={tr}
-                  classNames={compactCalendarClassNames}
-                  className="p-2 [&_[data-slot=button]]:text-xs"
-                  selected={endDate ? new Date(endDate) : undefined}
-                  onSelect={(day) =>
-                    setEndDate(day ? format(day, "yyyy-MM-dd") : endDate)
-                  }
-                />
-              </PopoverContent>
-            </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 min-w-[140px] justify-start text-[11px] font-normal bg-card"
+              >
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
+                {startDate
+                  ? format(new Date(startDate), "dd MMM yyyy", { locale: tr })
+                  : "Tarih seç"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                locale={tr}
+                classNames={compactCalendarClassNames}
+                className="p-2 [&_[data-slot=button]]:text-xs"
+                selected={startDate ? new Date(startDate) : undefined}
+                onSelect={(day) =>
+                  setStartDate(day ? format(day, "yyyy-MM-dd") : startDate)
+                }
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 min-w-[140px] justify-start text-[11px] font-normal bg-card"
+              >
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
+                {endDate
+                  ? format(new Date(endDate), "dd MMM yyyy", { locale: tr })
+                  : "Tarih seç"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                locale={tr}
+                classNames={compactCalendarClassNames}
+                className="p-2 [&_[data-slot=button]]:text-xs"
+                selected={endDate ? new Date(endDate) : undefined}
+                onSelect={(day) =>
+                  setEndDate(day ? format(day, "yyyy-MM-dd") : endDate)
+                }
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>TARAMA TRENDİ</CardTitle>
-              <CardDescription>
-                Gün bazında QR tarama sayıları.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-64">
-              {isLoading ? (
-                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  Grafik yükleniyor...
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyScans}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value) => [`${value}`, "Tarama sayısı"]}
-                      labelFormatter={(label) => `Tarih: ${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="scans"
-                      stroke="#0ea5e9"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>TARAMA TRENDİ</CardTitle>
+            <CardDescription>
+              Gün bazında QR tarama sayıları.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-64">
+            {isLoading ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                Grafik yükleniyor...
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyScans}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(value) => [`${value}`, "Tarama sayısı"]}
+                    labelFormatter={(label) => `Tarih: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="scans"
+                    stroke="#0ea5e9"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>YENİ ÜRÜNLER</CardTitle>
-              <CardDescription>
-                Her gün eklenen yeni ürün sayıları.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-64">
-              {isLoading ? (
-                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  Grafik yükleniyor...
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyProducts}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value) => [`${value}`, "Yeni ürün sayısı"]}
-                      labelFormatter={(label) => `Tarih: ${label}`}
-                    />
-                    <Bar dataKey="products" fill="#22c55e" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>YENİ ÜRÜNLER</CardTitle>
+            <CardDescription>
+              Her gün eklenen yeni ürün sayıları.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-64">
+            {isLoading ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                Grafik yükleniyor...
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyProducts}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(value) => [`${value}`, "Yeni ürün sayısı"]}
+                    labelFormatter={(label) => `Tarih: ${label}`}
+                  />
+                  <Bar dataKey="products" fill="#22c55e" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>CİHAZ DAĞILIMI</CardTitle>

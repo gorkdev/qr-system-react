@@ -241,9 +241,12 @@ const Trash = () => {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[220px]">
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-sm font-medium text-foreground">
+                          <span
+                            className="block truncate text-sm font-medium text-foreground"
+                            title={product.title}
+                          >
                             {product.title}
                           </span>
                           <span className="line-clamp-1 text-[11px] text-muted-foreground md:hidden">

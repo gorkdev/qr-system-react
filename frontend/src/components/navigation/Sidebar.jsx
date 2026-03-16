@@ -88,7 +88,7 @@ const SidebarContent = ({ onNavigate }) => {
       <div className="mt-4 flex items-center justify-between rounded-xl border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-[10px]">
-            admin
+            Admin
           </Badge>
           <span className="text-xs text-muted-foreground/80">Oturum açık</span>
         </div>

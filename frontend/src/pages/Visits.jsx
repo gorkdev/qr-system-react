@@ -294,10 +294,13 @@ const Visits = () => {
               ) : (
                 visits.map((visit) => (
                   <TableRow key={visit.id}>
-                    <TableCell className="max-w-xs">
+                    <TableCell className="max-w-[200px]">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                          <span
+                            className="min-w-0 truncate text-sm font-medium text-foreground"
+                            title={visit.product?.title ?? "Silinmiş ürün"}
+                          >
                             {visit.product?.title ?? "Silinmiş ürün"}
                           </span>
                           {visit.product?.deleted_at && (

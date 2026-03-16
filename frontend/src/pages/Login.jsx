@@ -102,7 +102,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@akcangrup.com"
+                placeholder="E-posta adresiniz"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -135,15 +135,7 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setForgotOpen(true)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Şifremi unuttum
-              </button>
-            </div>
+
 
             <Button type="submit" disabled={isLoading} className="w-full">
               {isLoading ? "Giriş yapılıyor..." : "Giriş yap"}
@@ -152,57 +144,7 @@ const Login = () => {
         </div>
       </div>
 
-      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Şifre sıfırlama</DialogTitle>
-            <DialogDescription>
-              Yeni şifreniz aşağıdaki e-posta adresine gönderilecektir.
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="rounded-lg border bg-muted/30 px-4 py-3">
-            <p className="text-[11px] text-muted-foreground">
-              Gönderilecek adres
-            </p>
-            <p className="mt-0.5 text-sm font-medium">akcangroup@gmail.com</p>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setForgotOpen(false)}
-            >
-              Vazgeç
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setForgotOpen(false);
-                toast("Şifre sıfırlama bağlantısı gönderildi.", {
-                  description: "Lütfen e-posta kutunuzu kontrol edin.",
-                });
-              }}
-            >
-              Şifreyi sıfırla
-            </Button>
-          </div>
-
-          <p className="text-center text-[11px] text-muted-foreground">
-            E-posta adresinize erişiminiz yoksa{" "}
-            <a
-              href="https://clicktopeak.com"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
-            >
-              bize ulaşın
-            </a>
-            .
-          </p>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

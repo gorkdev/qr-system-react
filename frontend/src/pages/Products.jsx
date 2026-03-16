@@ -444,20 +444,23 @@ const Products = () => {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-xs">
+                      <TableCell className="max-w-[150px]">
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-foreground">
+                          <span
+                            className="block truncate text-sm font-medium text-foreground"
+                            title={product.title}
+                          >
                             {product.title}
                           </span>
                           <div
-                            className="line-clamp-1 text-[11px] text-muted-foreground md:hidden [&>*]:inline"
+                            className="line-clamp-1 max-w-[140px] text-[11px] text-muted-foreground md:hidden [&>*]:inline"
                             dangerouslySetInnerHTML={{
                               __html: product.description,
                             }}
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell max-w-md">
+                      <TableCell className="hidden md:table-cell max-w-[200px]">
                         <div
                           className="truncate text-xs text-muted-foreground [&>*]:inline [&_br]:hidden [&_ul]:inline [&_ol]:inline [&_li]:inline [&_li]:list-none [&_li]:mr-1 [&_blockquote]:inline [&_h2]:inline [&_h2]:text-xs [&_h2]:font-semibold [&_p]:inline"
                           dangerouslySetInnerHTML={{
