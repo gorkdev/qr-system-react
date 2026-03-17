@@ -168,9 +168,8 @@ const ProductPublic = () => {
 
   const getPublicUrl = (path) => {
     if (!path) return null;
-    // PDF ve görseller için relative URL kullanıyoruz; Vite dev server
-    // /storage isteklerini backend'e proxy'liyor.
-    return `/storage/${path}`;
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    return `${API_BASE_URL}/storage/${path}`;
   };
 
   const coverUrl = product ? getPublicUrl(product.cover_image_path) : null;

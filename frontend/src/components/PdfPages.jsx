@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-if (workerUrl) GlobalWorkerOptions.workerSrc = workerUrl
+GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs'
 
 const PdfPages = ({ pdfUrl }) => {
   const [canvases, setCanvases] = useState([])

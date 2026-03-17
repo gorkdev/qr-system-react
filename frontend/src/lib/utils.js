@@ -13,9 +13,12 @@ export function cn(...inputs) {
  * - Bu yıl      → "13 Mar, 15:34"
  * - Farklı yıl  → "13 Mar 2025, 15:34"
  */
+// TODO: Sunucu saati düzeltildiğinde bu offset kaldırılmalı
+const SERVER_OFFSET_MS = 8 * 60 * 1000; // +8 dakika
+
 export function formatDate(value) {
   if (!value) return "-";
-  const d = new Date(value);
+  const d = new Date(new Date(value).getTime() + SERVER_OFFSET_MS);
   if (Number.isNaN(d.getTime())) return "-";
 
   const now = new Date();
