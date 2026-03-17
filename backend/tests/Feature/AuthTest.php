@@ -153,7 +153,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonFragment(['message' => 'Şifre başarıyla değiştirildi.']);
+            ->assertJsonFragment(['message' => 'Şifre başarıyla değiştirildi. Lütfen tekrar giriş yapın.']);
 
         $user->refresh();
         $this->assertTrue(Hash::check('new-secret-123', $user->password));

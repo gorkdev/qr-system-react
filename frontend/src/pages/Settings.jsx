@@ -274,14 +274,6 @@ const Settings = () => {
             />
           </div>
 
-          <div className="rounded-xl border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">Önizleme</p>
-            <p className="mt-1">
-              {qrReadable
-                ? "QR aktif: kullanıcı ürün detay sayfasına yönlendirilir."
-                : "QR kapalı: kullanıcı kapalı bilgilendirme sayfasını görür."}
-            </p>
-          </div>
         </CardContent>
 
         <CardFooter className="justify-end gap-2">

@@ -25,9 +25,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Eski tokenları temizle
-        $user->tokens()->delete();
-
         $token = $user->createToken('auth-token')->plainTextToken;
 
         ActivityLog::create([
@@ -91,16 +88,19 @@ class AuthController extends Controller
         $user->password = Hash::make($request->new_password);
         $user->save();
 
+        // Şifre değişti — tüm oturumları kapat (hacker dahil herkes atılsın)
+        $user->tokens()->delete();
+
         ActivityLog::create([
             'user_id'      => $user->id,
             'action'       => 'password_changed',
             'subject_type' => User::class,
             'subject_id'   => $user->id,
-            'description'  => 'Kullanıcı şifresini değiştirdi.',
+            'description'  => 'Kullanıcı şifresini değiştirdi. Tüm oturumlar kapatıldı.',
             'ip_address'   => $request->ip(),
             'user_agent'   => (string) $request->header('User-Agent'),
         ]);
 
-        return response()->json(['message' => 'Şifre başarıyla değiştirildi.']);
+        return response()->json(['message' => 'Şifre başarıyla değiştirildi. Lütfen tekrar giriş yapın.']);
     }
 }

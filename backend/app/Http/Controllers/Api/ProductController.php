@@ -74,17 +74,24 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        if ($this->isPostMaxSizeExceeded($request)) {
+            return response()->json([
+                'message' => 'Yüklenen dosyalar çok büyük.',
+                'errors'  => ['_general' => ['Toplam dosya boyutu sunucu limitini (8MB) aşıyor. Lütfen daha küçük dosyalar seçin.']],
+            ], 422);
+        }
+
         $validated = $request->validate([
             'title'                => ['required', 'string', 'max:255'],
             'description'          => ['required', 'string'],
             'youtube_url'          => ['nullable', 'string', 'max:255'],
             'qr_token'             => ['required', 'string', 'max:255', 'unique:products,qr_token'],
             'is_active'            => ['required', 'boolean'],
-            'cover'                => ['required', 'file', 'image', 'max:5120'],   // 5MB
-            'pdf'                  => ['nullable', 'file', 'mimes:pdf', 'max:51200'], // 50MB
+            'cover'                => ['required', 'file', 'image', 'max:2048'],   // 2MB
+            'pdf'                  => ['nullable', 'file', 'mimes:pdf', 'max:4096'], // 4MB
             'alt_images'           => ['nullable', 'array'],
-            'alt_images.*'         => ['file', 'image', 'max:5120'],
-            'qr'                   => ['nullable', 'file', 'image', 'max:5120'],
+            'alt_images.*'         => ['file', 'image', 'max:2048'],
+            'qr'                   => ['nullable', 'file', 'image', 'max:2048'],
         ]);
 
         $manager = new ImageManager(new Driver());
@@ -193,6 +200,13 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if ($this->isPostMaxSizeExceeded($request)) {
+            return response()->json([
+                'message' => 'Yüklenen dosyalar çok büyük.',
+                'errors'  => ['_general' => ['Toplam dosya boyutu sunucu limitini (8MB) aşıyor. Lütfen daha küçük dosyalar seçin.']],
+            ], 422);
+        }
+
         $product = Product::withTrashed()->findOrFail($id);
         if ($product->trashed()) {
             return response()->json([
@@ -205,10 +219,10 @@ class ProductController extends Controller
             'description'         => ['required', 'string'],
             'youtube_url'         => ['nullable', 'string', 'max:255'],
             'is_active'           => ['required', 'boolean'],
-            'cover'               => ['nullable', 'file', 'image', 'max:5120'],
-            'pdf'                 => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'cover'               => ['nullable', 'file', 'image', 'max:2048'],
+            'pdf'                 => ['nullable', 'file', 'mimes:pdf', 'max:4096'],
             'alt_images'          => ['nullable', 'array'],
-            'alt_images.*'        => ['file', 'image', 'max:5120'],
+            'alt_images.*'        => ['file', 'image', 'max:2048'],
             'remove_alt_images'   => ['nullable', 'array'],
             'remove_alt_images.*' => ['string'],
             'remove_pdf'          => ['nullable', 'boolean'],
@@ -445,6 +459,34 @@ class ProductController extends Controller
             'message' => $count > 0 ? "{$count} ürün kalıcı olarak silindi." : 'Silinecek ürün yok.',
             'purged_count' => $count,
         ]);
+    }
+
+    /**
+     * Check if PHP's post_max_size was exceeded (PHP silently drops $_POST and $_FILES).
+     */
+    private function isPostMaxSizeExceeded(Request $request): bool
+    {
+        $contentLength = $request->server('CONTENT_LENGTH');
+        if ($contentLength === null) {
+            return false;
+        }
+
+        $postMaxSize = $this->parsePhpSize(ini_get('post_max_size'));
+
+        return $postMaxSize > 0 && (int) $contentLength > $postMaxSize;
+    }
+
+    private function parsePhpSize(string $size): int
+    {
+        $unit = strtolower(substr($size, -1));
+        $value = (int) $size;
+
+        return match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => $value,
+        };
     }
 
     /**

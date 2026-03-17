@@ -32,7 +32,7 @@ class AuthExtendedTest extends TestCase
         ]);
     }
 
-    public function test_login_clears_old_tokens(): void
+    public function test_login_preserves_old_tokens(): void
     {
         $user = User::factory()->create(['email' => 'multi@test.com']);
 
@@ -44,14 +44,14 @@ class AuthExtendedTest extends TestCase
 
         $this->assertEquals(1, $user->tokens()->count());
 
-        // İkinci login — eski token temizlenmeli
+        // İkinci login — eski token korunmalı, yeni token eklenmeli
         $this->postJson('/api/login', [
             'email'    => 'multi@test.com',
             'password' => 'password',
         ])->assertOk();
 
-        // Sadece yeni token kalmalı
-        $this->assertEquals(1, $user->tokens()->count());
+        // İki token olmalı (çoklu oturum desteği)
+        $this->assertEquals(2, $user->tokens()->count());
     }
 
     public function test_login_returns_correct_user_structure(): void

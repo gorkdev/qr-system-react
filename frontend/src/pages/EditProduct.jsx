@@ -29,8 +29,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { getYoutubeEmbedUrl } from "@/lib/youtube";
 
-const MAX_IMAGE_TOTAL_BYTES = 15 * 1024 * 1024; // 15MB total (cover + all alt images)
-const MAX_PDF_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_IMAGE_TOTAL_BYTES = 3 * 1024 * 1024; // 3MB total (cover + all alt images)
+const MAX_PDF_BYTES = 4 * 1024 * 1024; // 4MB
+const MAX_POST_BYTES = 7 * 1024 * 1024; // 7MB total form payload (server post_max_size = 8MB)
 
 const containsEmoji = (value) => {
   if (!value) return false;
@@ -248,11 +249,11 @@ const EditProduct = () => {
               : "",
         );
         setCoverFile(coverFile || null);
-        setCoverError("Toplam görsel boyutu en fazla 15MB olabilir.");
+        setCoverError("Toplam görsel boyutu en fazla 3MB olabilir.");
         if (e?.target) e.target.value = "";
         toast("Toplam görsel boyutu çok büyük.", {
           description:
-            "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+            "Kapak + alt görsellerin toplamı en fazla 3MB olmalıdır.",
         });
         return;
       }
@@ -280,7 +281,7 @@ const EditProduct = () => {
     if (newTotal > MAX_IMAGE_TOTAL_BYTES) {
       if (e?.target) e.target.value = "";
       toast("Toplam görsel boyutu çok büyük.", {
-        description: "Kapak + alt görsellerin toplamı en fazla 15MB olmalıdır.",
+        description: "Kapak + alt görsellerin toplamı en fazla 3MB olmalıdır.",
       });
       return;
     }
@@ -313,7 +314,7 @@ const EditProduct = () => {
       setPdfFile(null);
       if (e?.target) e.target.value = "";
       toast("PDF çok büyük.", {
-        description: "PDF dosyası en fazla 50MB olabilir.",
+        description: "PDF dosyası en fazla 4MB olabilir.",
       });
       return;
     }
@@ -382,6 +383,20 @@ const EditProduct = () => {
         formData.append("remove_pdf", "1");
       }
 
+      // Toplam form boyutu kontrolü (post_max_size = 8MB)
+      let totalBytes = 0;
+      for (const [, value] of formData.entries()) {
+        if (value instanceof Blob) totalBytes += value.size;
+        else totalBytes += new Blob([value]).size;
+      }
+      if (totalBytes > MAX_POST_BYTES) {
+        toast("Toplam dosya boyutu çok büyük.", {
+          description:
+            "Tüm dosyaların toplamı en fazla 7MB olabilir. Lütfen daha küçük dosyalar seçin.",
+        });
+        return;
+      }
+
       const res = await apiFetch(`/api/products/${id}`, {
         method: "POST",
         headers: {
@@ -398,9 +413,12 @@ const EditProduct = () => {
 
         let description;
         if (result?.errors && typeof result.errors === "object") {
+          const generalErrors = result.errors._general;
           const pdfErrors = result.errors.pdf;
-          if (Array.isArray(pdfErrors) && pdfErrors.length > 0) {
-            description = "PDF dosyası en fazla 50MB olabilir.";
+          if (Array.isArray(generalErrors) && generalErrors.length > 0) {
+            description = generalErrors.join(" ");
+          } else if (Array.isArray(pdfErrors) && pdfErrors.length > 0) {
+            description = "PDF dosyası en fazla 4MB olabilir.";
           } else {
             description = Object.values(result.errors).flat().join(" ");
           }
@@ -745,7 +763,7 @@ const EditProduct = () => {
                     </>
                   )}
                   <p className="text-[11px] text-muted-foreground">
-                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 5MB.
+                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 2MB.
                   </p>
                 </div>
               ) : (
@@ -758,7 +776,7 @@ const EditProduct = () => {
                     <span className="font-medium text-primary">dosya seç</span>
                   </p>
                   <p className="text-[11px]">
-                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 5MB.
+                    Önerilen boyut: 1200x630px. JPG veya PNG, en fazla 2MB.
                   </p>
                 </div>
               )}
@@ -922,7 +940,7 @@ const EditProduct = () => {
                     </p>
                   )}
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Sadece PDF dosyaları, en fazla 50MB.
+                    Sadece PDF dosyaları, en fazla 4MB.
                   </p>
                 </div>
               ) : (
@@ -935,7 +953,7 @@ const EditProduct = () => {
                     <span className="font-medium text-primary">dosya seç</span>
                   </p>
                   <p className="text-[11px]">
-                    Sadece PDF dosyaları, en fazla 50MB.
+                    Sadece PDF dosyaları, en fazla 4MB.
                   </p>
                 </div>
               )}
